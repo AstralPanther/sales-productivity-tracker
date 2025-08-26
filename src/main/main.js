@@ -13,9 +13,9 @@ function createWindow() {
     
     mainWindow = new BrowserWindow({
         width: 400,
-        height: 48, // Increased from 40px - better balance
+        height: 70, // Further reduced to eliminate bottom overhang
         x: screenWidth - 420, // Position near right side of taskbar area
-        y: screenHeight - 58, // Position at bottom (taskbar area)
+        y: screenHeight - 80, // Position at bottom (taskbar area)
         frame: false,
         alwaysOnTop: true,
         skipTaskbar: true,

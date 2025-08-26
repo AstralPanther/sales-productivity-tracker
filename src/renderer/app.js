@@ -28,6 +28,20 @@ class ActivityTracker {
                 throw new Error('electronAPI not available');
             }
             this.data = await window.electronAPI.getData();
+            
+            // Load calls data from localStorage (temporary solution)
+            const savedCalls = localStorage.getItem('currentCalls');
+            if (savedCalls) {
+                this.data.currentCalls = parseInt(savedCalls) || 0;
+            } else {
+                this.data.currentCalls = 0;
+            }
+            
+            // Ensure callsTarget exists
+            if (!this.data.callsTarget) {
+                this.data.callsTarget = 20;
+            }
+            
             console.log('Data loaded successfully:', this.data);
         } catch (error) {
             console.error('Error loading data:', error);
@@ -37,9 +51,17 @@ class ActivityTracker {
                 shiftStart: "09:00",
                 shiftEnd: "17:00", 
                 target: 50,
+                callsTarget: 20,
                 currentPoints: 0,
+                currentCalls: 0,
                 lastUpdated: new Date().toISOString()
             };
+            
+            // Load calls data from localStorage (temporary solution)
+            const savedCalls = localStorage.getItem('currentCalls');
+            if (savedCalls) {
+                this.data.currentCalls = parseInt(savedCalls) || 0;
+            }
         }
     }
 
@@ -68,25 +90,55 @@ class ActivityTracker {
             const title = isFirstRun ? 'Welcome to Activity Points Tracker!' : 'Settings';
             const subtitle = isFirstRun ? 'Let\'s set up your daily shift schedule.' : 'Update your shift schedule and daily target.';
             
-            // Simplified layout for compact window
+            // 3-column layout with vertical stacking to optimize 400x80px space
             dialog.innerHTML = `
-                <div style="display:flex;align-items:center;justify-content:center;height:100%;">
-                    <div style="display:flex;align-items:center;gap:6px;justify-content:center;">
-                        <div style="display:flex;align-items:center;gap:2px;">
-                            <label style="font-size:9px;color:#555;">Start:</label>
-                            <input type="time" id="setupShiftStart" value="${this.data.shiftStart}" style="width:60px;padding:1px;border:1px solid #ddd;border-radius:2px;font-size:8px;">
+                <div style="display:flex;align-items:stretch;height:100%;width:100%;padding:8px 12px;overflow:hidden;gap:16px;">
+                    
+                    <!-- Column 1: Times -->
+                    <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex:1;">
+                        <div style="display:flex;flex-direction:column;gap:6px;flex:1;">
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <label style="font-size:12px;color:#555;font-weight:500;min-width:40px;">Start:</label>
+                                <input type="time" id="setupShiftStart" value="${this.data.shiftStart}" 
+                                       style="padding:4px;border:1px solid #ddd;border-radius:3px;font-size:12px;flex:1;">
+                            </div>
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <label style="font-size:12px;color:#555;font-weight:500;min-width:40px;">End:</label>
+                                <input type="time" id="setupShiftEnd" value="${this.data.shiftEnd}" 
+                                       style="padding:4px;border:1px solid #ddd;border-radius:3px;background:#f8f8f8;font-size:12px;flex:1;" readonly>
+                            </div>
                         </div>
-                        <div style="display:flex;align-items:center;gap:2px;">
-                            <label style="font-size:9px;color:#555;">End:</label>
-                            <input type="time" id="setupShiftEnd" value="${this.data.shiftEnd}" style="width:60px;padding:1px;border:1px solid #ddd;border-radius:2px;background:#f8f8f8;font-size:8px;" readonly>
-                            <button id="endTimeLock" style="background:#f0f0f0;border:1px solid #ccc;cursor:pointer;font-size:10px;padding:1px 2px;color:#333;border-radius:2px;" title="Click to unlock end time editing">🔒</button>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:2px;">
-                            <label style="font-size:9px;color:#555;">Target:</label>
-                            <input type="number" id="setupTarget" value="${this.data.target}" min="1" max="200" style="width:40px;padding:1px;border:1px solid #ddd;border-radius:2px;font-size:8px;text-align:center;">
-                        </div>
-                        <button id="setupComplete" style="background:#007acc;color:white;border:none;padding:2px 6px;border-radius:2px;cursor:pointer;font-size:8px;font-weight:bold;">Save</button>
+                        <!-- Lock button positioned to the right, vertically centered -->
+                        <button id="endTimeLock" 
+                                style="background:#f0f0f0;border:1px solid #ccc;cursor:pointer;font-size:12px;padding:3px 6px;color:#333;border-radius:3px;flex-shrink:0;" 
+                                title="Lock/unlock">🔒</button>
                     </div>
+                    
+                    <!-- Column 2: Targets -->
+                    <div style="display:flex;flex-direction:column;justify-content:center;gap:6px;flex:1;">
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <span style="font-size:12px;">🎯</span>
+                            <label style="font-size:12px;color:#555;font-weight:500;min-width:50px;">Activity:</label>
+                            <input type="number" id="setupTarget" value="${this.data.target}" min="1" max="200" 
+                                   style="padding:4px;border:1px solid #ddd;border-radius:3px;font-size:12px;text-align:center;width:50px;">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <span style="font-size:12px;">🎯</span>
+                            <label style="font-size:12px;color:#555;font-weight:500;min-width:50px;">Calls:</label>
+                            <input type="number" id="setupCallsTarget" value="${this.data.callsTarget || 20}" min="1" max="100" 
+                                   style="padding:4px;border:1px solid #ddd;border-radius:3px;font-size:12px;text-align:center;width:50px;">
+                        </div>
+                    </div>
+                    
+                    <!-- Column 3: Actions -->
+                    <div style="display:flex;flex-direction:column;justify-content:center;gap:6px;flex:0 0 auto;">
+                        <button id="setupComplete" 
+                                style="background:#007acc;color:white;border:none;padding:8px 16px;border-radius:3px;cursor:pointer;font-size:12px;font-weight:500;">Save</button>
+                        <button id="setupCancel" 
+                                style="background:#ccc;color:#333;border:none;padding:8px 16px;border-radius:3px;cursor:pointer;font-size:12px;font-weight:500;">Cancel</button>
+                    </div>
+                    
+                </div>
             `;
             
             overlay.appendChild(dialog);
@@ -174,12 +226,20 @@ class ActivityTracker {
                 try {
                     const shiftStart = document.getElementById('setupShiftStart').value;
                     const shiftEnd = document.getElementById('setupShiftEnd').value;
-                    const target = parseInt(document.getElementById('setupTarget').value);
+                    const activityTarget = parseInt(document.getElementById('setupTarget').value);
+                    const callsTarget = parseInt(document.getElementById('setupCallsTarget').value);
                     
-                    console.log('Setup values:', { shiftStart, shiftEnd, target });
+                    console.log('Setup values:', { shiftStart, shiftEnd, activityTarget, callsTarget });
                     
                     // Update data using captured context
-                    const updatedData = await window.electronAPI.updateSettings({ shiftStart, shiftEnd, target });
+                    const updatedData = await window.electronAPI.updateSettings({ 
+                        shiftStart, 
+                        shiftEnd, 
+                        target: activityTarget 
+                    });
+                    
+                    // Save calls target locally for now
+                    localStorage.setItem('callsTarget', callsTarget.toString());
                     self.data = updatedData; // Update local data
                     console.log('Settings updated');
                     
@@ -195,22 +255,38 @@ class ActivityTracker {
                     console.error('Error in setup complete:', error);
                 }
             });
+            
+            // Add cancel button handler
+            const cancelButton = document.getElementById('setupCancel');
+            if (cancelButton) {
+                cancelButton.addEventListener('click', () => {
+                    console.log('Setup cancelled');
+                    document.body.removeChild(overlay);
+                    resolve();
+                });
+            }
         });
     }
 
     setupEventListeners() {
-        // Click to update points
-        const progressBar = document.getElementById('progressBar');
-        console.log('Setting up listeners, progressBar found:', !!progressBar);
+        // Click either progress bar to update both metrics
+        const activityBar = document.getElementById('activityBar');
+        const callsBar = document.getElementById('callsBar');
         
-        if (progressBar) {
-            progressBar.addEventListener('click', (e) => {
-                console.log('Progress bar clicked');
+        if (activityBar) {
+            activityBar.addEventListener('click', (e) => {
+                console.log('Activity bar clicked');
                 e.preventDefault();
-                this.showPointsInput();
+                this.showCombinedInput();
             });
-        } else {
-            console.error('progressBar element not found!');
+        }
+        
+        if (callsBar) {
+            callsBar.addEventListener('click', (e) => {
+                console.log('Calls bar clicked');
+                e.preventDefault();
+                this.showCombinedInput();
+            });
         }
 
         // Right-click to open settings - clear cache first to force fresh dialog
@@ -230,10 +306,10 @@ class ActivityTracker {
         let isDragging = false;
         let dragStart = { x: 0, y: 0 };
 
-        // Make draggable areas (everywhere except progress bar)
+        // Make draggable areas (everywhere except progress bars)
         document.body.addEventListener('mousedown', (e) => {
-            // Don't drag if clicking on progress bar or dialogs
-            if (e.target.closest('#progressBar') || e.target.closest('[style*="z-index"]')) {
+            // Don't drag if clicking on progress bars or dialogs
+            if (e.target.closest('#activityBar') || e.target.closest('#callsBar') || e.target.closest('[style*="z-index"]')) {
                 return;
             }
             
@@ -283,49 +359,51 @@ class ActivityTracker {
     }
 
     updateProgressBar() {
+        // Update Activity Progress Bar
         const activityFill = document.getElementById('activityFill');
-        const progressPercent = (this.data.currentPoints / this.data.target) * 100;
+        const activityProgressPercent = (this.data.currentPoints / this.data.target) * 100;
         
-        console.log('Updating progress bar:');
-        console.log('- Element found:', !!activityFill);
-        console.log('- Element:', activityFill);
-        console.log('- Current points:', this.data.currentPoints);
-        console.log('- Target:', this.data.target);
-        console.log('- Progress percent:', progressPercent);
-        
-        if (!activityFill) {
-            console.error('activityFill element not found!');
-            return;
+        if (activityFill) {
+            activityFill.style.display = 'block';
+            activityFill.style.visibility = 'visible';
+            activityFill.style.width = `${Math.min(activityProgressPercent, 100)}%`;
+            
+            // Color coding for activity based on expected progress
+            const expectedPoints = this.calculateExpectedPoints();
+            const activityRatio = this.data.currentPoints / expectedPoints;
+            
+            activityFill.className = 'activity-fill';
+            if (activityRatio >= 1.0) {
+                activityFill.classList.add('ahead');
+            } else if (activityRatio >= 0.9) {
+                activityFill.classList.add('close');
+            } else {
+                activityFill.classList.add('behind');
+            }
         }
         
-        // Force visibility and debugging styles
-        activityFill.style.display = 'block';
-        activityFill.style.visibility = 'visible';
-        activityFill.style.width = `${Math.min(progressPercent, 100)}%`;
-        console.log('- Set width to:', `${Math.min(progressPercent, 100)}%`);
-        console.log('- Element computed style width:', window.getComputedStyle(activityFill).width);
-        console.log('- Element computed style background:', window.getComputedStyle(activityFill).background);
+        // Update Calls Progress Bar
+        const callsFill = document.getElementById('callsFill');
+        const callsProgressPercent = (this.data.currentCalls / this.data.callsTarget) * 100;
         
-        // Color coding based on expected progress
-        const expectedPoints = this.calculateExpectedPoints();
-        const ratio = this.data.currentPoints / expectedPoints;
-        
-        console.log('- Expected points:', expectedPoints);
-        console.log('- Ratio (actual/expected):', ratio);
-        
-        activityFill.className = 'activity-fill';
-        if (ratio >= 1.0) {
-            activityFill.classList.add('ahead');
-            console.log('- Color: GREEN (ahead)');
-        } else if (ratio >= 0.9) {
-            activityFill.classList.add('close');
-            console.log('- Color: YELLOW (close)');
-        } else {
-            activityFill.classList.add('behind');
-            console.log('- Color: RED (behind)');
+        if (callsFill) {
+            callsFill.style.display = 'block';
+            callsFill.style.visibility = 'visible';
+            callsFill.style.width = `${Math.min(callsProgressPercent, 100)}%`;
+            
+            // Color coding for calls based on expected progress
+            const expectedCalls = this.calculateExpectedCalls();
+            const callsRatio = this.data.currentCalls / expectedCalls;
+            
+            callsFill.className = 'activity-fill';
+            if (callsRatio >= 1.0) {
+                callsFill.classList.add('ahead');
+            } else if (callsRatio >= 0.9) {
+                callsFill.classList.add('close');
+            } else {
+                callsFill.classList.add('behind');
+            }
         }
-        
-        console.log('- Final element classes:', activityFill.className);
     }
 
     updateTimeIndicator(testHour = null) {
@@ -351,8 +429,16 @@ class ActivityTracker {
             timePercent = 100;
         }
         
-        const expectedLine = document.getElementById('expectedLine');
-        expectedLine.style.left = `${timePercent}%`;
+        // Update both expected lines
+        const expectedLine1 = document.getElementById('expectedLine1');
+        const expectedLine2 = document.getElementById('expectedLine2');
+        
+        if (expectedLine1) {
+            expectedLine1.style.left = `${timePercent}%`;
+        }
+        if (expectedLine2) {
+            expectedLine2.style.left = `${timePercent}%`;
+        }
         
         console.log('- Shift start:', shiftStart);
         console.log('- Shift end:', shiftEnd);
@@ -361,8 +447,16 @@ class ActivityTracker {
     }
 
     updatePointsDisplay() {
-        const display = document.getElementById('pointsDisplay');
-        display.textContent = `${this.data.currentPoints}/${this.data.target}`;
+        const activityDisplay = document.getElementById('activityDisplay');
+        const callsDisplay = document.getElementById('callsDisplay');
+        
+        if (activityDisplay) {
+            activityDisplay.textContent = `${this.data.currentPoints}/${this.data.target}`;
+        }
+        
+        if (callsDisplay) {
+            callsDisplay.textContent = `${this.data.currentCalls}/${this.data.callsTarget}`;
+        }
     }
 
     calculateExpectedPoints() {
@@ -386,14 +480,34 @@ class ActivityTracker {
         }
     }
 
+    calculateExpectedCalls() {
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        
+        const shiftStart = this.parseTime(this.data.shiftStart);
+        const shiftEnd = this.parseTime(this.data.shiftEnd);
+        
+        const shiftDurationMinutes = (shiftEnd.hour - shiftStart.hour) * 60 + (shiftEnd.minute - shiftStart.minute);
+        const currentMinutesSinceStart = (currentHour - shiftStart.hour) * 60 + (currentMinute - shiftStart.minute);
+        
+        if (currentMinutesSinceStart <= 0) {
+            return 0;
+        } else if (currentMinutesSinceStart >= shiftDurationMinutes) {
+            return this.data.callsTarget;
+        } else {
+            const progressRatio = currentMinutesSinceStart / shiftDurationMinutes;
+            return Math.round(this.data.callsTarget * progressRatio);
+        }
+    }
+
     parseTime(timeString) {
         const [hour, minute] = timeString.split(':').map(Number);
         return { hour, minute };
     }
 
-    showPointsInput() {
-        console.log('showPointsInput called');
-        // Create full-window input dialog that matches window dimensions
+    showCombinedInput() {
+        console.log('showCombinedInput called');
         const overlay = document.createElement('div');
         overlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:white;z-index:3000;display:flex;align-items:center;justify-content:center;border-radius:4px;';
         
@@ -401,44 +515,75 @@ class ActivityTracker {
         dialog.style.cssText = 'background:white;padding:8px;width:100%;height:100%;text-align:center;display:flex;align-items:center;justify-content:center;';
         
         dialog.innerHTML = `
-            <div style="display:flex;align-items:center;gap:8px;">
-                <span style="font-size:11px;font-weight:bold;color:#333;white-space:nowrap;">Points:</span>
-                <input type="number" id="pointsInput" value="${this.data.currentPoints}" min="0" max="200" 
-                       style="width:60px;padding:3px;text-align:center;border:1px solid #007acc;border-radius:2px;font-size:11px;">
-                <button id="savePoints" style="background:#007acc;color:white;border:none;padding:3px 8px;border-radius:2px;cursor:pointer;font-size:10px;">Save</button>
-                <button id="cancelPoints" style="background:#ccc;color:#333;border:none;padding:3px 8px;border-radius:2px;cursor:pointer;font-size:10px;">Cancel</button>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <span style="font-size:11px;font-weight:bold;color:#333;white-space:nowrap;">Activity:</span>
+                <input type="number" id="activityInput" value="${this.data.currentPoints}" min="0" max="200" 
+                       style="width:50px;padding:3px;text-align:center;border:1px solid #007acc;border-radius:2px;font-size:11px;">
+                <span style="font-size:11px;font-weight:bold;color:#333;white-space:nowrap;">Calls:</span>
+                <input type="number" id="callsInput" value="${this.data.currentCalls}" min="0" max="100" 
+                       style="width:50px;padding:3px;text-align:center;border:1px solid #007acc;border-radius:2px;font-size:11px;">
+                <button id="saveBoth" style="background:#007acc;color:white;border:none;padding:3px 8px;border-radius:2px;cursor:pointer;font-size:10px;">Save</button>
+                <button id="cancelBoth" style="background:#ccc;color:#333;border:none;padding:3px 8px;border-radius:2px;cursor:pointer;font-size:10px;">Cancel</button>
             </div>
         `;
         
         overlay.appendChild(dialog);
         document.body.appendChild(overlay);
         
-        const input = document.getElementById('pointsInput');
-        input.focus();
-        input.select();
+        const activityInput = document.getElementById('activityInput');
+        const callsInput = document.getElementById('callsInput');
+        
+        // Focus first input and select text
+        activityInput.focus();
+        activityInput.select();
         
         const cleanup = () => {
             document.body.removeChild(overlay);
         };
         
-        document.getElementById('savePoints').addEventListener('click', () => {
-            const points = parseInt(input.value);
-            console.log('User entered:', points);
+        const saveValues = () => {
+            const points = parseInt(activityInput.value);
+            const calls = parseInt(callsInput.value);
+            
+            console.log('User entered - Activity:', points, 'Calls:', calls);
+            
             if (!isNaN(points)) {
-                this.updatePoints(points);
+                this.updateActivityPoints(points);
+            }
+            if (!isNaN(calls)) {
+                this.updateCalls(calls);
             }
             cleanup();
+        };
+        
+        document.getElementById('saveBoth').addEventListener('click', saveValues);
+        document.getElementById('cancelBoth').addEventListener('click', cleanup);
+        
+        // Tab between fields and Enter to save
+        activityInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                callsInput.focus();
+                callsInput.select();
+            } else if (e.key === 'Enter') {
+                saveValues();
+            } else if (e.key === 'Escape') {
+                cleanup();
+            }
         });
         
-        document.getElementById('cancelPoints').addEventListener('click', cleanup);
-        
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                const points = parseInt(input.value);
-                if (!isNaN(points)) {
-                    this.updatePoints(points);
-                }
-                cleanup();
+        callsInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab' && e.shiftKey) {
+                e.preventDefault();
+                activityInput.focus();
+                activityInput.select();
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                // Tab from last field - could focus Save button or loop back
+                activityInput.focus();
+                activityInput.select();
+            } else if (e.key === 'Enter') {
+                saveValues();
             } else if (e.key === 'Escape') {
                 cleanup();
             }
@@ -449,8 +594,26 @@ class ActivityTracker {
         });
     }
 
-    async updatePoints(points) {
+    async updateActivityPoints(points) {
+        this.data.currentPoints = points;
         this.data = await window.electronAPI.updatePoints(points);
+        
+        // Ensure callsTarget and currentCalls are preserved after update
+        if (!this.data.callsTarget) {
+            this.data.callsTarget = 20;
+        }
+        if (!this.data.currentCalls) {
+            const savedCalls = localStorage.getItem('currentCalls');
+            this.data.currentCalls = savedCalls ? parseInt(savedCalls) || 0 : 0;
+        }
+        
+        this.updateDisplay();
+    }
+
+    async updateCalls(calls) {
+        this.data.currentCalls = calls;
+        // For now, save calls data locally - we may need to extend the main process later
+        localStorage.setItem('currentCalls', calls.toString());
         this.updateDisplay();
     }
 

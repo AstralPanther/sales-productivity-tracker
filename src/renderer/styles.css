@@ -20,7 +20,7 @@ body {
 .tracker-container {
     width: calc(100% - 4px); /* Account for potential borders */
     height: 100%;
-    padding: 2px 8px 0px 8px; /* Reduced bottom padding */
+    padding: 1px 8px 0px 8px; /* Minimal top padding, no bottom */
     position: relative;
     overflow: hidden; /* Prevent any container overflow */
 }
@@ -29,13 +29,26 @@ body {
     display: flex;
     flex-direction: column;
     height: 100%;
-    justify-content: space-around; /* Better space distribution */
-    padding: 2px 0 2px 0; /* Add small bottom padding for border visibility */
+    justify-content: space-between;
+    padding: 1px 0 0 0;
+    gap: 1px;
+}
+
+.bar-label {
+    position: absolute;
+    left: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 9px;
+    color: #555;
+    font-weight: 500;
+    z-index: 5;
+    pointer-events: none;
 }
 
 .time-markers {
     position: relative;
-    height: 14px;
+    height: 12px;
     margin-bottom: 1px;
 }
 
@@ -54,15 +67,15 @@ body {
     position: relative;
     background: #e0e0e0;
     border-radius: 3px;
-    height: 22px !important;
-    margin: 1px 0 0 0; /* Remove bottom margin */
+    height: 20px !important;
     overflow: hidden;
     cursor: pointer;
     min-height: 20px !important;
     border: 1px solid #ddd;
     display: flex;
-    align-items: stretch; /* Keep this - it fixed the height issue */
-    -webkit-app-region: no-drag; /* Make progress bar clickable */
+    align-items: stretch;
+    -webkit-app-region: no-drag;
+    margin: 0;
 }
 
 .activity-fill {
@@ -110,14 +123,14 @@ body {
 .points-display {
     position: absolute;
     top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    right: 6px;
+    transform: translateY(-50%);
     font-weight: bold;
-    font-size: 11px;
+    font-size: 10px;
     color: #333;
     z-index: 15;
     text-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
-    pointer-events: none; /* Don't interfere with progress bar clicks */
+    pointer-events: none;
 }
 
 /* Context Menu */

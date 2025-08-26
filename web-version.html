@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Points Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 11px;
+            background: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            overflow: hidden;
+            user-select: none;
+            width: 400px;
+            height: 70px;
+            margin: 20px;
+        }
+
+        .tracker-container {
+            width: calc(100% - 4px);
+            height: 100%;
+            padding: 1px 8px 0px 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-bar-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            justify-content: space-between;
+            padding: 1px 0 0 0;
+            gap: 1px;
+        }
+
+        .time-markers {
+            position: relative;
+            height: 12px;
+            margin-bottom: 1px;
+        }
+
+        .time-marker {
+            position: absolute;
+            font-size: 10px;
+            color: #666;
+            font-weight: 500;
+            text-align: center;
+            min-width: 20px;
+            transform: translateX(-50%);
+        }
+
+        .progress-bar {
+            flex: 1;
+            position: relative;
+            background: #e0e0e0;
+            border-radius: 3px;
+            height: 20px !important;
+            overflow: hidden;
+            cursor: pointer;
+            min-height: 20px !important;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: stretch;
+            margin: 0;
+        }
+
+        .bar-label {
+            position: absolute;
+            left: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 9px;
+            color: #555;
+            font-weight: 500;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .activity-fill {
+            height: 100% !important;
+            min-height: 16px !important;
+            border-radius: 3px;
+            transition: width 0.3s ease, background-color 0.3s ease;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            background: #ccc;
+            min-width: 2px;
+            display: block !important;
+            box-sizing: border-box;
+        }
+
+        .activity-fill.behind {
+            background: linear-gradient(90deg, #ff4444, #ff6666);
+        }
+
+        .activity-fill.close {
+            background: linear-gradient(90deg, #ffaa00, #ffcc44);
+        }
+
+        .activity-fill.ahead {
+            background: linear-gradient(90deg, #44aa44, #66cc66);
+        }
+
+        .expected-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, #ffff00, #ff8800);
+            border-left: 1px solid rgba(0,0,0,0.3);
+            border-right: 1px solid rgba(0,0,0,0.3);
+            z-index: 10;
+            transition: left 0.3s ease;
+            box-shadow: 0 0 3px rgba(255, 136, 0, 0.6);
+        }
+
+        .points-display {
+            position: absolute;
+            top: 50%;
+            right: 6px;
+            transform: translateY(-50%);
+            font-weight: bold;
+            font-size: 10px;
+            color: #333;
+            z-index: 15;
+            text-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
+            pointer-events: none;
+        }
+
+        /* Context Menu */
+        .context-menu {
+            position: fixed;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 2000;
+            min-width: 120px;
+            display: none;
+        }
+
+        .menu-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background-color 0.2s;
+        }
+
+        .menu-item:hover {
+            background: #f0f0f0;
+        }
+
+        /* Settings Panel */
+        .settings-panel {
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            min-width: 350px;
+            display: none;
+        }
+
+        .settings-panel h3 {
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: #333;
+        }
+
+        .setting-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .setting-row label {
+            font-size: 11px;
+            color: #555;
+            min-width: 50px;
+        }
+
+        .setting-row input {
+            padding: 4px 6px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 11px;
+            flex: 1;
+        }
+
+        .setting-buttons {
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .setting-buttons button {
+            flex: 1;
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 11px;
+            cursor: pointer;
+            background: white;
+            transition: background-color 0.2s;
+        }
+
+        .setting-buttons button:hover {
+            background: #f0f0f0;
+        }
+
+        #saveSettings {
+            background: #2196f3;
+            color: white;
+            border-color: #2196f3;
+        }
+
+        #saveSettings:hover {
+            background: #1976d2;
+        }
+
+        .dialog {
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 2000;
+            display: none;
+        }
+
+        .dialog-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .dialog-row label {
+            font-size: 11px;
+            color: #333;
+        }
+
+        .dialog-row input {
+            padding: 4px 6px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 11px;
+            width: 60px;
+        }
+
+        .dialog-row button {
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 11px;
+            cursor: pointer;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="tracker-container">
+        <div class="progress-bar-container">
+            <div class="time-markers">
+                <span class="time-marker" data-hour="09">09</span>
+                <span class="time-marker" data-hour="10">10</span>
+                <span class="time-marker" data-hour="11">11</span>
+                <span class="time-marker" data-hour="12">12</span>
+                <span class="time-marker" data-hour="13">13</span>
+                <span class="time-marker" data-hour="14">14</span>
+                <span class="time-marker" data-hour="15">15</span>
+                <span class="time-marker" data-hour="16">16</span>
+                <span class="time-marker" data-hour="17">17</span>
+            </div>
+            
+            <div class="progress-bar" id="activityBar">
+                <div class="activity-fill" id="activityFill"></div>
+                <div class="expected-line" id="expectedLine1"></div>
+                <div class="bar-label">Activity</div>
+                <div class="points-display" id="activityDisplay">0/50</div>
+            </div>
+            
+            <div class="progress-bar" id="callsBar">
+                <div class="activity-fill" id="callsFill"></div>
+                <div class="expected-line" id="expectedLine2"></div>
+                <div class="bar-label">Outbound Calls</div>
+                <div class="points-display" id="callsDisplay">0/20</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div class="context-menu" id="contextMenu">
+        <div class="menu-item" onclick="openSettings()">Settings</div>
+    </div>
+
+    <!-- Combined Input Dialog -->
+    <div class="dialog" id="combinedDialog">
+        <div class="dialog-row">
+            <label>Activity:</label>
+            <input type="number" id="activityInput" min="0" max="200" value="0">
+            <label>Calls:</label>
+            <input type="number" id="callsInput" min="0" max="100" value="0">
+            <button onclick="saveCombined()">Save</button>
+            <button onclick="closeDialog()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div class="settings-panel" id="settingsPanel">
+        <h3>Shift Settings</h3>
+        <div class="setting-row">
+            <label>Start:</label>
+            <input type="time" id="startTimeInput" value="09:00">
+            <button id="lockButton" onclick="toggleEndTimeLock()">🔓</button>
+        </div>
+        <div class="setting-row">
+            <label>End:</label>
+            <input type="time" id="endTimeInput" value="17:00">
+        </div>
+        <div class="setting-row">
+            <label>Activity Target:</label>
+            <input type="number" id="targetInput" min="1" max="200" value="50">
+        </div>
+        <div class="setting-row">
+            <label>Calls Target:</label>
+            <input type="number" id="callsTargetInput" min="1" max="100" value="20">
+        </div>
+        <div class="setting-buttons">
+            <button id="saveSettings" onclick="saveSettings()">Save</button>
+            <button onclick="closeSettings()">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        class ActivityTracker {
+            constructor() {
+                this.currentPoints = 0;
+                this.currentCalls = 0;
+                this.target = 50;
+                this.callsTarget = 20;
+                this.shiftStart = '09:00';
+                this.shiftEnd = '17:00';
+                this.isEndTimeLocked = true;
+                
+                this.loadData();
+                this.setupEventListeners();
+                this.updateDisplay();
+                this.startUpdateLoop();
+            }
+
+            loadData() {
+                const data = localStorage.getItem('activityTracker');
+                if (data) {
+                    const parsed = JSON.parse(data);
+                    const today = new Date().toDateString();
+                    
+                    if (parsed.date === today) {
+                        this.currentPoints = parsed.currentPoints || 0;
+                        this.currentCalls = parsed.currentCalls || 0;
+                        this.target = parsed.target || 50;
+                        this.callsTarget = parsed.callsTarget || 20;
+                        this.shiftStart = parsed.shiftStart || '09:00';
+                        this.shiftEnd = parsed.shiftEnd || '17:00';
+                    }
+                }
+            }
+
+            saveData() {
+                const data = {
+                    date: new Date().toDateString(),
+                    currentPoints: this.currentPoints,
+                    currentCalls: this.currentCalls,
+                    target: this.target,
+                    callsTarget: this.callsTarget,
+                    shiftStart: this.shiftStart,
+                    shiftEnd: this.shiftEnd
+                };
+                localStorage.setItem('activityTracker', JSON.stringify(data));
+            }
+
+            setupEventListeners() {
+                // Click either progress bar to update both metrics
+                const activityBar = document.getElementById('activityBar');
+                const callsBar = document.getElementById('callsBar');
+                
+                if (activityBar) {
+                    activityBar.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.openCombinedDialog();
+                    });
+                }
+                
+                if (callsBar) {
+                    callsBar.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.openCombinedDialog();
+                    });
+                }
+
+                // Right click
+                document.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    this.showContextMenu(e.clientX, e.clientY);
+                });
+
+                // Click elsewhere to close menus
+                document.addEventListener('click', () => {
+                    this.hideContextMenu();
+                    this.closeDialog();
+                });
+            }
+
+            openCombinedDialog() {
+                const dialog = document.getElementById('combinedDialog');
+                const activityInput = document.getElementById('activityInput');
+                const callsInput = document.getElementById('callsInput');
+                
+                activityInput.value = this.currentPoints;
+                callsInput.value = this.currentCalls;
+                dialog.style.display = 'block';
+                activityInput.focus();
+                activityInput.select();
+                
+                // Tab navigation between inputs
+                activityInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Tab') {
+                        e.preventDefault();
+                        callsInput.focus();
+                        callsInput.select();
+                    } else if (e.key === 'Enter') {
+                        saveCombined();
+                    }
+                });
+                
+                callsInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Tab' && e.shiftKey) {
+                        e.preventDefault();
+                        activityInput.focus();
+                        activityInput.select();
+                    } else if (e.key === 'Enter') {
+                        saveCombined();
+                    }
+                });
+            }
+
+            showContextMenu(x, y) {
+                const menu = document.getElementById('contextMenu');
+                menu.style.left = x + 'px';
+                menu.style.top = y + 'px';
+                menu.style.display = 'block';
+            }
+
+            hideContextMenu() {
+                document.getElementById('contextMenu').style.display = 'none';
+            }
+
+            updateDisplay() {
+                const now = new Date();
+                const [shiftStartHour, shiftStartMin] = this.shiftStart.split(':').map(Number);
+                const [shiftEndHour, shiftEndMin] = this.shiftEnd.split(':').map(Number);
+                
+                const shiftStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), shiftStartHour, shiftStartMin);
+                const shiftEndTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), shiftEndHour, shiftEndMin);
+                
+                // Handle overnight shifts
+                if (shiftEndTime <= shiftStartTime) {
+                    shiftEndTime.setDate(shiftEndTime.getDate() + 1);
+                }
+                
+                const shiftDuration = shiftEndTime - shiftStartTime;
+                const elapsedTime = Math.max(0, Math.min(now - shiftStartTime, shiftDuration));
+                const timeProgress = elapsedTime / shiftDuration;
+                
+                // Update time markers
+                this.updateTimeMarkers();
+                
+                // Update both expected lines
+                const expectedLine1 = document.getElementById('expectedLine1');
+                const expectedLine2 = document.getElementById('expectedLine2');
+                if (expectedLine1) expectedLine1.style.left = (timeProgress * 100) + '%';
+                if (expectedLine2) expectedLine2.style.left = (timeProgress * 100) + '%';
+                
+                // Update activity progress
+                const activityProgress = this.currentPoints / this.target;
+                const activityFill = document.getElementById('activityFill');
+                if (activityFill) {
+                    activityFill.style.width = Math.max(0.5, activityProgress * 100) + '%';
+                    
+                    // Color coding for activity
+                    const expectedPoints = timeProgress * this.target;
+                    const activityRatio = this.currentPoints / expectedPoints;
+                    
+                    activityFill.className = 'activity-fill';
+                    if (activityRatio >= 1.0) {
+                        activityFill.classList.add('ahead');
+                    } else if (activityRatio >= 0.9) {
+                        activityFill.classList.add('close');
+                    } else {
+                        activityFill.classList.add('behind');
+                    }
+                }
+                
+                // Update calls progress
+                const callsProgress = this.currentCalls / this.callsTarget;
+                const callsFill = document.getElementById('callsFill');
+                if (callsFill) {
+                    callsFill.style.width = Math.max(0.5, callsProgress * 100) + '%';
+                    
+                    // Color coding for calls
+                    const expectedCalls = timeProgress * this.callsTarget;
+                    const callsRatio = this.currentCalls / expectedCalls;
+                    
+                    callsFill.className = 'activity-fill';
+                    if (callsRatio >= 1.0) {
+                        callsFill.classList.add('ahead');
+                    } else if (callsRatio >= 0.9) {
+                        callsFill.classList.add('close');
+                    } else {
+                        callsFill.classList.add('behind');
+                    }
+                }
+                
+                // Update displays
+                const activityDisplay = document.getElementById('activityDisplay');
+                const callsDisplay = document.getElementById('callsDisplay');
+                if (activityDisplay) activityDisplay.textContent = `${this.currentPoints}/${this.target}`;
+                if (callsDisplay) callsDisplay.textContent = `${this.currentCalls}/${this.callsTarget}`;
+            }
+
+            updateTimeMarkers() {
+                const [startHour] = this.shiftStart.split(':').map(Number);
+                const [endHour] = this.shiftEnd.split(':').map(Number);
+                
+                const markers = document.querySelectorAll('.time-marker');
+                markers.forEach((marker, index) => {
+                    const hour = startHour + index;
+                    const displayHour = hour > 24 ? hour - 24 : hour;
+                    marker.textContent = displayHour.toString().padStart(2, '0');
+                    marker.style.left = (index / (markers.length - 1) * 100) + '%';
+                });
+            }
+
+            startUpdateLoop() {
+                this.updateDisplay();
+                setInterval(() => this.updateDisplay(), 5 * 60 * 1000); // 5 minutes
+            }
+        }
+
+        let tracker;
+        let isEndTimeLocked = true;
+
+        // Initialize when page loads
+        window.addEventListener('load', () => {
+            tracker = new ActivityTracker();
+        });
+
+        function saveCombined() {
+            const activityInput = document.getElementById('activityInput');
+            const callsInput = document.getElementById('callsInput');
+            const points = parseInt(activityInput.value) || 0;
+            const calls = parseInt(callsInput.value) || 0;
+            
+            tracker.currentPoints = points;
+            tracker.currentCalls = calls;
+            tracker.saveData();
+            tracker.updateDisplay();
+            closeDialog();
+        }
+
+        function closeDialog() {
+            document.getElementById('combinedDialog').style.display = 'none';
+        }
+
+        function openSettings() {
+            document.getElementById('startTimeInput').value = tracker.shiftStart;
+            document.getElementById('endTimeInput').value = tracker.shiftEnd;
+            document.getElementById('targetInput').value = tracker.target;
+            document.getElementById('settingsPanel').style.display = 'block';
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsPanel').style.display = 'none';
+        }
+
+        function saveSettings() {
+            tracker.shiftStart = document.getElementById('startTimeInput').value;
+            tracker.shiftEnd = document.getElementById('endTimeInput').value;
+            tracker.target = parseInt(document.getElementById('targetInput').value) || 50;
+            tracker.callsTarget = parseInt(document.getElementById('callsTargetInput').value) || 20;
+            tracker.saveData();
+            tracker.updateDisplay();
+            closeSettings();
+        }
+
+        function toggleEndTimeLock() {
+            const startTimeInput = document.getElementById('startTimeInput');
+            const endTimeInput = document.getElementById('endTimeInput');
+            const lockButton = document.getElementById('lockButton');
+            
+            isEndTimeLocked = !isEndTimeLocked;
+            
+            if (isEndTimeLocked) {
+                endTimeInput.readOnly = true;
+                endTimeInput.style.background = '#f8f8f8';
+                lockButton.textContent = '🔒';
+                updateEndTime();
+            } else {
+                endTimeInput.readOnly = false;
+                endTimeInput.style.background = 'white';
+                lockButton.textContent = '🔓';
+            }
+        }
+
+        function updateEndTime() {
+            if (isEndTimeLocked) {
+                const startTime = document.getElementById('startTimeInput').value;
+                if (startTime) {
+                    const [hours, minutes] = startTime.split(':').map(Number);
+                    const endHours = (hours + 8) % 24;
+                    const endTime = endHours.toString().padStart(2, '0') + ':' + minutes.toString().padStart(2, '0');
+                    document.getElementById('endTimeInput').value = endTime;
+                }
+            }
+        }
+
+        // Update end time when start time changes (if locked)
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('startTimeInput').addEventListener('change', updateEndTime);
+        });
+    </script>
+</body>
+</html>

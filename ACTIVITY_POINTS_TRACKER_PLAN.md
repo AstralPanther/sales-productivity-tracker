@@ -1,15 +1,15 @@
 # Activity Points Tracker - Project Plan
 
 ## Project Overview
-A lightweight Windows desktop widget that sits in the taskbar area, visually tracking progress toward daily activity point goals using a water-jar metaphor. The user must achieve 50 activity points during an 8-hour shift with flexible start times. Activity points are tracked in HubSpot and manually updated in the tracker.
+A lightweight Windows desktop widget that sits in the taskbar area, visually tracking progress toward daily sales productivity goals. The user must achieve dual targets during an 8-hour shift: 50 activity points and 20 outbound calls with flexible start times. Both metrics are tracked in HubSpot and manually updated in the tracker.
 
 ## Core Requirements
 
 ### Functional Requirements
-- **Target**: 50 activity points in 8 hours
-- **Visual Metaphor**: Water jar with hourly markings (like the water consumption jar)
+- **Dual Targets**: 50 activity points + 20 outbound calls in 8 hours
+- **Visual Design**: Two labeled progress bars with independent time indicators
 - **Flexible Timing**: Support different shift start times
-- **Real-time Updates**: Current progress vs. expected progress at current time
+- **Real-time Updates**: Current progress vs. expected progress at current time for both metrics
 - **Minimal UI**: Ultra-compact widget positioned in taskbar empty space
 - **Taskbar Integration**: Sits in taskbar area without interfering with Windows UI
 
@@ -23,26 +23,23 @@ A lightweight Windows desktop widget that sits in the taskbar area, visually tra
 
 ## Visual Design Concept
 
-### Progress Bar Design (Taskbar Version)
+### Dual Progress Bar Design (Taskbar Version)
 ```
-Timeline progress bar with two independent scales:
-┌──────────────────────────────────────────────────────┐
-│ ████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░│░░░░░░░░░░░░░░░░│10/50
-└──────────────────────────────────────────────────────┘
+Two labeled progress bars with shared time scale:
+┌────────────────────────────────────────────────────┐
+│ Activity      ████████░░░░░░░░░░░░│░░░░░░░░│ 25/50 │
+│ Outbound Calls ██████░░░░░░░░░░░░░░│░░░░░░░░│ 12/20 │
+└────────────────────────────────────────────────────┘
   09   10   11   12   13   14   15   16   17
-        ↑                             ↑                    
-  Activity scale               Expected time          
-   (10 points = 20% fill)         (16:00 now)            
+              ↑                    ↑                    
+        Expected time         Current time          
 
-Two independent indicators:
-1. Expected Progress Line: Blue vertical line travels with current time
-   - At 12:00 (noon), line sits at the "12" position on time scale
-   - Moves along hour markers based on actual clock time
-
-2. Activity Progress Fill: Colored bar fills based on points/50
-   - 10 points = 20% of 50 = fills 20% of total bar width
-   - Color: Red (behind), Yellow (close), Green (on/ahead)
-   - Independent of time - only depends on activity points entered
+Dual independent tracking:
+1. Activity Points: Target 50, colored fill based on schedule performance
+2. Outbound Calls: Target 20, colored fill based on schedule performance
+3. Shared time indicator: Single vertical line for both progress bars
+4. Labels: "Activity" and "Outbound Calls" clearly identify each bar
+5. Both bars show: fill percentage, color coding, and current/target counts
 ```
 
 ### Color Coding
@@ -264,31 +261,40 @@ Application is **PRODUCTION READY** with professional compact UI:
 - ✅ Perfect compact layout (400x48px) with all features functional
 
 ## GitHub Deployment & Distribution 🚀
-- [ ] Initialize Git repository and push to GitHub
-- [ ] Set up GitHub Actions for automated Windows builds
-- [ ] Create releases with downloadable .exe files
-- [ ] Enable issue tracking for future development
-- [ ] Add README with setup instructions
+- ✅ Initialize Git repository and push to GitHub
+- ✅ Create GitHub repository with complete codebase
+- ✅ Configure electron-builder for Windows executable generation
+- ✅ Build Windows installer (.exe) ready for deployment
+- ✅ Add comprehensive README with setup instructions
+- ✅ **READY FOR DEPLOYMENT**: `Activity Points Tracker Setup 1.0.0.exe` (89MB)
 
 ## Final Application Status - PRODUCTION READY ✅
 
 **Core Features:**
-- ✅ **Activity Tracking**: Click progress bar to update points from HubSpot
-- ✅ **Time Visualization**: Real-time progress vs expected timeline
-- ✅ **Color Coding**: Red (behind), Yellow (close), Green (ahead/on track)
+- ✅ **Dual Progress Tracking**: Activity points (50 target) + Outbound calls (20 target)
+- ✅ **Combined Input Dialog**: Click either bar to update both metrics with Tab/Enter navigation
+- ✅ **Time Visualization**: Real-time progress vs expected timeline for both metrics
+- ✅ **Color Coding**: Red (behind), Yellow (close), Green (ahead/on track) for each bar
 - ✅ **Flexible Shifts**: Configurable start times with smart end time coupling
 - ✅ **Data Persistence**: Automatic daily reset with settings retention
 
 **Advanced Features:**
-- ✅ **Lock/Unlock Toggle**: Smart end time management (🔒/🔓)
+- ✅ **Professional Settings UI**: Optimized 3-column layout with target icons (🎯) 
+- ✅ **Lock/Unlock Toggle**: Smart end time management (🔒/🔓) positioned perfectly
 - ✅ **Window Dragging**: Repositionable via click and drag
 - ✅ **Cache Management**: Fresh settings dialog every time
 - ✅ **Perfect Scaling**: 5-minute update frequency for responsiveness
 - ✅ **Taskbar Integration**: Always-on-top, skip taskbar, frameless design
 
+**UI Design:**
+- ✅ **Dual Progress Bars**: Labeled "Activity" and "Outbound Calls" with internal positioning
+- ✅ **Streamlined Input**: Single dialog for both metrics (Activity: [__] Calls: [__] Tab between)
+- ✅ **Optimal Settings Layout**: Times | Targets | Actions in perfect 3-column arrangement
+- ✅ **Visual Clarity**: Target icons, proper spacing, no overflow issues
+
 **Technical Specifications:**
 - ✅ **Platform**: Electron-based desktop application
-- ✅ **Window Size**: 400x48px (ultra-compact)
+- ✅ **Window Size**: 400x80px (optimized for dual progress bars)
 - ✅ **Performance**: <50MB RAM, minimal CPU usage
 - ✅ **Cross-Platform**: Ready for Windows, macOS, Linux
 - ✅ **No Admin Required**: Portable executable for restricted environments
