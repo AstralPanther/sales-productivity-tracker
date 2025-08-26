@@ -1,0 +1,34 @@
+{
+  "appId": "com.activitytracker.salesproductivity",
+  "productName": "Activity Points Tracker",
+  "directories": {
+    "output": "dist"
+  },
+  "files": [
+    "src/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": "nsis",
+    "icon": "assets/icon.ico"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true
+  },
+  "mac": {
+    "target": "dmg",
+    "icon": "assets/icon.icns"
+  },
+  "linux": {
+    "target": "AppImage",
+    "icon": "assets/icon.png"
+  },
+  "publish": {
+    "provider": "github",
+    "owner": "jorgezpina",
+    "repo": "sales-productivity-tracker"
+  }
+}
