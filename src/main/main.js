@@ -13,13 +13,15 @@ function createWindow() {
     
     mainWindow = new BrowserWindow({
         width: 400,
-        height: 70, // Further reduced to eliminate bottom overhang
+        height: 85, // Increased to accommodate three progress bars
+        minWidth: 300,
+        minHeight: 70,
         x: screenWidth - 420, // Position near right side of taskbar area
-        y: screenHeight - 80, // Position at bottom (taskbar area)
-        frame: false,
+        y: screenHeight - 95, // Adjusted position for increased height
+        frame: true, // Enable frame for resize handles
         alwaysOnTop: true,
         skipTaskbar: true,
-        resizable: false,
+        resizable: true,
         transparent: false,
         webPreferences: {
             nodeIntegration: false,

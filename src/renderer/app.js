@@ -16,6 +16,7 @@ class ActivityTracker {
         this.setupEventListeners();
         console.log('Event listeners set up');
         this.updateTimeMarkers(); // Create time markers and notches on startup
+        this.setupResizeHandler(); // Handle window resizing
         this.startUpdateLoop();
         this.updateDisplay();
         console.log('Initialization complete');
@@ -42,6 +43,24 @@ class ActivityTracker {
                 this.data.callsTarget = 20;
             }
             
+            // Ensure backlog fields exist and load from localStorage
+            const savedBacklogTarget = localStorage.getItem('backlogTarget');
+            if (savedBacklogTarget) {
+                this.data.backlogTarget = parseInt(savedBacklogTarget) || 0;
+            } else if (!this.data.backlogTarget) {
+                this.data.backlogTarget = 0;
+            }
+            
+            if (!this.data.currentBacklog) {
+                this.data.currentBacklog = 0;
+            }
+            
+            // Load backlog data from localStorage
+            const savedBacklog = localStorage.getItem('currentBacklog');
+            if (savedBacklog) {
+                this.data.currentBacklog = parseInt(savedBacklog) || 0;
+            }
+            
             console.log('Data loaded successfully:', this.data);
         } catch (error) {
             console.error('Error loading data:', error);
@@ -52,8 +71,10 @@ class ActivityTracker {
                 shiftEnd: "17:00", 
                 target: 50,
                 callsTarget: 20,
+                backlogTarget: 0,
                 currentPoints: 0,
                 currentCalls: 0,
+                currentBacklog: 0,
                 lastUpdated: new Date().toISOString()
             };
             
@@ -61,6 +82,12 @@ class ActivityTracker {
             const savedCalls = localStorage.getItem('currentCalls');
             if (savedCalls) {
                 this.data.currentCalls = parseInt(savedCalls) || 0;
+            }
+            
+            // Load backlog data from localStorage
+            const savedBacklog = localStorage.getItem('currentBacklog');
+            if (savedBacklog) {
+                this.data.currentBacklog = parseInt(savedBacklog) || 0;
             }
         }
     }
@@ -126,6 +153,12 @@ class ActivityTracker {
                             <span style="font-size:12px;">🎯</span>
                             <label style="font-size:12px;color:#555;font-weight:500;min-width:50px;">Calls:</label>
                             <input type="number" id="setupCallsTarget" value="${this.data.callsTarget || 20}" min="1" max="100" 
+                                   style="padding:4px;border:1px solid #ddd;border-radius:3px;font-size:12px;text-align:center;width:50px;">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <span style="font-size:12px;">📋</span>
+                            <label style="font-size:12px;color:#555;font-weight:500;min-width:50px;">Backlog:</label>
+                            <input type="number" id="setupBacklogTarget" value="${this.data.backlogTarget || 0}" min="0" max="1000" 
                                    style="padding:4px;border:1px solid #ddd;border-radius:3px;font-size:12px;text-align:center;width:50px;">
                         </div>
                     </div>
@@ -228,8 +261,9 @@ class ActivityTracker {
                     const shiftEnd = document.getElementById('setupShiftEnd').value;
                     const activityTarget = parseInt(document.getElementById('setupTarget').value);
                     const callsTarget = parseInt(document.getElementById('setupCallsTarget').value);
+                    const backlogTarget = parseInt(document.getElementById('setupBacklogTarget').value);
                     
-                    console.log('Setup values:', { shiftStart, shiftEnd, activityTarget, callsTarget });
+                    console.log('Setup values:', { shiftStart, shiftEnd, activityTarget, callsTarget, backlogTarget });
                     
                     // Update data using captured context
                     const updatedData = await window.electronAPI.updateSettings({ 
@@ -238,9 +272,12 @@ class ActivityTracker {
                         target: activityTarget 
                     });
                     
-                    // Save calls target locally for now
+                    // Save calls and backlog targets locally for now
                     localStorage.setItem('callsTarget', callsTarget.toString());
+                    localStorage.setItem('backlogTarget', backlogTarget.toString());
                     self.data = updatedData; // Update local data
+                    self.data.callsTarget = callsTarget; // Ensure calls target is set in data
+                    self.data.backlogTarget = backlogTarget; // Ensure backlog target is set in data
                     console.log('Settings updated');
                     
                     // Update time markers
@@ -272,6 +309,7 @@ class ActivityTracker {
         // Click either progress bar to update both metrics
         const activityBar = document.getElementById('activityBar');
         const callsBar = document.getElementById('callsBar');
+        const backlogBar = document.getElementById('backlogBar');
         
         if (activityBar) {
             activityBar.addEventListener('click', (e) => {
@@ -284,6 +322,14 @@ class ActivityTracker {
         if (callsBar) {
             callsBar.addEventListener('click', (e) => {
                 console.log('Calls bar clicked');
+                e.preventDefault();
+                this.showCombinedInput();
+            });
+        }
+        
+        if (backlogBar) {
+            backlogBar.addEventListener('click', (e) => {
+                console.log('Backlog bar clicked');
                 e.preventDefault();
                 this.showCombinedInput();
             });
@@ -309,7 +355,7 @@ class ActivityTracker {
         // Make draggable areas (everywhere except progress bars)
         document.body.addEventListener('mousedown', (e) => {
             // Don't drag if clicking on progress bars or dialogs
-            if (e.target.closest('#activityBar') || e.target.closest('#callsBar') || e.target.closest('[style*="z-index"]')) {
+            if (e.target.closest('#activityBar') || e.target.closest('#callsBar') || e.target.closest('#backlogBar') || e.target.closest('[style*="z-index"]')) {
                 return;
             }
             
@@ -330,6 +376,14 @@ class ActivityTracker {
 
         document.body.addEventListener('mouseup', () => {
             isDragging = false;
+        });
+    }
+
+    setupResizeHandler() {
+        // Handle window resize events for dynamic scaling
+        window.addEventListener('resize', () => {
+            this.updateTimeMarkers();
+            this.updateDisplay();
         });
     }
 
@@ -371,9 +425,12 @@ class ActivityTracker {
             // Color coding for activity based on expected progress
             const expectedPoints = this.calculateExpectedPoints();
             const activityRatio = this.data.currentPoints / expectedPoints;
+            const activityCompletionRatio = this.data.currentPoints / this.data.target;
             
             activityFill.className = 'activity-fill';
-            if (activityRatio >= 1.0) {
+            if (activityCompletionRatio >= 1.0) {
+                activityFill.classList.add('complete'); // Gold for 100%+ completion
+            } else if (activityRatio >= 1.0) {
                 activityFill.classList.add('ahead');
             } else if (activityRatio >= 0.9) {
                 activityFill.classList.add('close');
@@ -394,14 +451,52 @@ class ActivityTracker {
             // Color coding for calls based on expected progress
             const expectedCalls = this.calculateExpectedCalls();
             const callsRatio = this.data.currentCalls / expectedCalls;
+            const callsCompletionRatio = this.data.currentCalls / this.data.callsTarget;
             
             callsFill.className = 'activity-fill';
-            if (callsRatio >= 1.0) {
+            if (callsCompletionRatio >= 1.0) {
+                callsFill.classList.add('complete'); // Gold for 100%+ completion
+            } else if (callsRatio >= 1.0) {
                 callsFill.classList.add('ahead');
             } else if (callsRatio >= 0.9) {
                 callsFill.classList.add('close');
             } else {
                 callsFill.classList.add('behind');
+            }
+        }
+        
+        // Update Backlog Progress Bar (countdown logic)
+        const backlogFill = document.getElementById('backlogFill');
+        if (this.data.backlogTarget > 0) {
+            // For countdown: progress = (target - current) / target
+            const backlogProgressPercent = Math.max(0, (this.data.backlogTarget - this.data.currentBacklog) / this.data.backlogTarget) * 100;
+            
+            if (backlogFill) {
+                backlogFill.style.display = 'block';
+                backlogFill.style.visibility = 'visible';
+                backlogFill.style.width = `${Math.min(backlogProgressPercent, 100)}%`;
+                
+                // Color coding for backlog based on expected progress
+                const expectedBacklogRemaining = this.calculateExpectedBacklogRemaining();
+                const backlogRatio = (this.data.backlogTarget - this.data.currentBacklog) / (this.data.backlogTarget - expectedBacklogRemaining);
+                const backlogCompletionRatio = (this.data.backlogTarget - this.data.currentBacklog) / this.data.backlogTarget;
+                
+                backlogFill.className = 'activity-fill';
+                if (this.data.currentBacklog === 0 && this.data.backlogTarget > 0) {
+                    backlogFill.classList.add('complete'); // Gold when backlog is cleared (0 remaining)
+                } else if (backlogRatio >= 1.0) {
+                    backlogFill.classList.add('ahead');
+                } else if (backlogRatio >= 0.9) {
+                    backlogFill.classList.add('close');
+                } else {
+                    backlogFill.classList.add('behind');
+                }
+            }
+        } else {
+            // If no backlog target set, hide the progress bar
+            if (backlogFill) {
+                backlogFill.style.width = '0%';
+                backlogFill.className = 'activity-fill';
             }
         }
     }
@@ -429,15 +524,19 @@ class ActivityTracker {
             timePercent = 100;
         }
         
-        // Update both expected lines
+        // Update all expected lines
         const expectedLine1 = document.getElementById('expectedLine1');
         const expectedLine2 = document.getElementById('expectedLine2');
+        const expectedLine3 = document.getElementById('expectedLine3');
         
         if (expectedLine1) {
             expectedLine1.style.left = `${timePercent}%`;
         }
         if (expectedLine2) {
             expectedLine2.style.left = `${timePercent}%`;
+        }
+        if (expectedLine3) {
+            expectedLine3.style.left = `${timePercent}%`;
         }
         
         console.log('- Shift start:', shiftStart);
@@ -449,6 +548,7 @@ class ActivityTracker {
     updatePointsDisplay() {
         const activityDisplay = document.getElementById('activityDisplay');
         const callsDisplay = document.getElementById('callsDisplay');
+        const backlogDisplay = document.getElementById('backlogDisplay');
         
         if (activityDisplay) {
             activityDisplay.textContent = `${this.data.currentPoints}/${this.data.target}`;
@@ -456,6 +556,13 @@ class ActivityTracker {
         
         if (callsDisplay) {
             callsDisplay.textContent = `${this.data.currentCalls}/${this.data.callsTarget}`;
+        }
+        
+        if (backlogDisplay) {
+            // For countdown display: show remaining/target (e.g., "5/10" means 5 remaining out of 10 total)
+            const currentBacklog = this.data.currentBacklog || 0;
+            const backlogTarget = this.data.backlogTarget || 0;
+            backlogDisplay.textContent = `${currentBacklog}/${backlogTarget}`;
         }
     }
 
@@ -501,6 +608,32 @@ class ActivityTracker {
         }
     }
 
+    calculateExpectedBacklogRemaining() {
+        if (this.data.backlogTarget === 0) {
+            return 0;
+        }
+        
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        
+        const shiftStart = this.parseTime(this.data.shiftStart);
+        const shiftEnd = this.parseTime(this.data.shiftEnd);
+        
+        const shiftDurationMinutes = (shiftEnd.hour - shiftStart.hour) * 60 + (shiftEnd.minute - shiftStart.minute);
+        const currentMinutesSinceStart = (currentHour - shiftStart.hour) * 60 + (currentMinute - shiftStart.minute);
+        
+        if (currentMinutesSinceStart <= 0) {
+            return this.data.backlogTarget; // At start, should have full backlog
+        } else if (currentMinutesSinceStart >= shiftDurationMinutes) {
+            return 0; // At end, should have zero backlog remaining
+        } else {
+            const progressRatio = currentMinutesSinceStart / shiftDurationMinutes;
+            // Expected remaining = target * (1 - progressRatio)
+            return Math.round(this.data.backlogTarget * (1 - progressRatio));
+        }
+    }
+
     parseTime(timeString) {
         const [hour, minute] = timeString.split(':').map(Number);
         return { hour, minute };
@@ -515,15 +648,18 @@ class ActivityTracker {
         dialog.style.cssText = 'background:white;padding:8px;width:100%;height:100%;text-align:center;display:flex;align-items:center;justify-content:center;';
         
         dialog.innerHTML = `
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                <span style="font-size:11px;font-weight:bold;color:#333;white-space:nowrap;">Activity:</span>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <span style="font-size:10px;font-weight:bold;color:#333;white-space:nowrap;">Activity:</span>
                 <input type="number" id="activityInput" value="${this.data.currentPoints}" min="0" max="200" 
-                       style="width:50px;padding:3px;text-align:center;border:1px solid #007acc;border-radius:2px;font-size:11px;">
-                <span style="font-size:11px;font-weight:bold;color:#333;white-space:nowrap;">Calls:</span>
+                       style="width:40px;padding:2px;text-align:center;border:1px solid #007acc;border-radius:2px;font-size:10px;">
+                <span style="font-size:10px;font-weight:bold;color:#333;white-space:nowrap;">Calls:</span>
                 <input type="number" id="callsInput" value="${this.data.currentCalls}" min="0" max="100" 
-                       style="width:50px;padding:3px;text-align:center;border:1px solid #007acc;border-radius:2px;font-size:11px;">
-                <button id="saveBoth" style="background:#007acc;color:white;border:none;padding:3px 8px;border-radius:2px;cursor:pointer;font-size:10px;">Save</button>
-                <button id="cancelBoth" style="background:#ccc;color:#333;border:none;padding:3px 8px;border-radius:2px;cursor:pointer;font-size:10px;">Cancel</button>
+                       style="width:40px;padding:2px;text-align:center;border:1px solid #007acc;border-radius:2px;font-size:10px;">
+                <span style="font-size:10px;font-weight:bold;color:#333;white-space:nowrap;">Backlog:</span>
+                <input type="number" id="backlogInput" value="${this.data.currentBacklog}" min="0" max="1000" 
+                       style="width:40px;padding:2px;text-align:center;border:1px solid #007acc;border-radius:2px;font-size:10px;">
+                <button id="saveBoth" style="background:#007acc;color:white;border:none;padding:2px 6px;border-radius:2px;cursor:pointer;font-size:9px;">Save</button>
+                <button id="cancelBoth" style="background:#ccc;color:#333;border:none;padding:2px 6px;border-radius:2px;cursor:pointer;font-size:9px;">Cancel</button>
             </div>
         `;
         
@@ -532,6 +668,7 @@ class ActivityTracker {
         
         const activityInput = document.getElementById('activityInput');
         const callsInput = document.getElementById('callsInput');
+        const backlogInput = document.getElementById('backlogInput');
         
         // Focus first input and select text
         activityInput.focus();
@@ -544,14 +681,18 @@ class ActivityTracker {
         const saveValues = () => {
             const points = parseInt(activityInput.value);
             const calls = parseInt(callsInput.value);
+            const backlog = parseInt(backlogInput.value);
             
-            console.log('User entered - Activity:', points, 'Calls:', calls);
+            console.log('User entered - Activity:', points, 'Calls:', calls, 'Backlog:', backlog);
             
             if (!isNaN(points)) {
                 this.updateActivityPoints(points);
             }
             if (!isNaN(calls)) {
                 this.updateCalls(calls);
+            }
+            if (!isNaN(backlog)) {
+                this.updateBacklog(backlog);
             }
             cleanup();
         };
@@ -579,7 +720,23 @@ class ActivityTracker {
                 activityInput.select();
             } else if (e.key === 'Tab') {
                 e.preventDefault();
-                // Tab from last field - could focus Save button or loop back
+                backlogInput.focus();
+                backlogInput.select();
+            } else if (e.key === 'Enter') {
+                saveValues();
+            } else if (e.key === 'Escape') {
+                cleanup();
+            }
+        });
+        
+        backlogInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab' && e.shiftKey) {
+                e.preventDefault();
+                callsInput.focus();
+                callsInput.select();
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                // Tab from last field - loop back to first
                 activityInput.focus();
                 activityInput.select();
             } else if (e.key === 'Enter') {
@@ -607,6 +764,16 @@ class ActivityTracker {
             this.data.currentCalls = savedCalls ? parseInt(savedCalls) || 0 : 0;
         }
         
+        // Ensure backlog data is preserved after update
+        if (!this.data.backlogTarget) {
+            const savedBacklogTarget = localStorage.getItem('backlogTarget');
+            this.data.backlogTarget = savedBacklogTarget ? parseInt(savedBacklogTarget) || 0 : 0;
+        }
+        if (!this.data.currentBacklog) {
+            const savedBacklog = localStorage.getItem('currentBacklog');
+            this.data.currentBacklog = savedBacklog ? parseInt(savedBacklog) || 0 : 0;
+        }
+        
         this.updateDisplay();
     }
 
@@ -614,6 +781,13 @@ class ActivityTracker {
         this.data.currentCalls = calls;
         // For now, save calls data locally - we may need to extend the main process later
         localStorage.setItem('currentCalls', calls.toString());
+        this.updateDisplay();
+    }
+
+    async updateBacklog(backlog) {
+        this.data.currentBacklog = backlog;
+        // Save backlog data locally
+        localStorage.setItem('currentBacklog', backlog.toString());
         this.updateDisplay();
     }
 
