@@ -10,7 +10,7 @@ function createWindow() {
     const { screen } = require('electron');
     const primaryDisplay = screen.getPrimaryDisplay();
     const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
-    
+
     mainWindow = new BrowserWindow({
         width: 400,
         height: 85, // Increased to accommodate three progress bars
@@ -31,13 +31,13 @@ function createWindow() {
     });
 
     mainWindow.loadFile('src/renderer/index.html');
-    
+
     // Keep window always on top and focused
     mainWindow.setAlwaysOnTop(true, 'floating');
     mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-    
+
     // Prevent window from being minimized
-    mainWindow.on('minimize', (event) => {
+    mainWindow.on('minimize', event => {
         event.preventDefault();
         mainWindow.show();
     });
@@ -48,11 +48,13 @@ function loadData() {
     try {
         if (fs.existsSync(DATA_FILE)) {
             const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+
             return data;
         }
     } catch (error) {
         console.error('Error loading data:', error);
     }
+
     return getDefaultData();
 }
 
@@ -68,13 +70,19 @@ function saveData(data) {
 // Get default data structure
 function getDefaultData() {
     const now = new Date();
+
     return {
         date: now.toDateString(),
         shiftStart: '09:00',
         shiftEnd: '17:00',
         target: 50,
+        callsTarget: 20,
+        backlogTarget: 0,
         currentPoints: 0,
-        lastUpdated: now.toISOString()
+        currentCalls: 0,
+        currentBacklog: 0,
+        lastUpdated: now.toISOString(),
+        version: '1.0'
     };
 }
 
@@ -83,11 +91,16 @@ function checkAndResetForNewDay(data) {
     const today = new Date().toDateString();
     if (data.date !== today) {
         const newData = getDefaultData();
-        newData.shiftStart = data.shiftStart; // Keep shift settings
-        newData.shiftEnd = data.shiftEnd;
-        newData.target = data.target;
+        // Preserve settings
+        newData.shiftStart = data.shiftStart || newData.shiftStart;
+        newData.shiftEnd = data.shiftEnd || newData.shiftEnd;
+        newData.target = data.target || newData.target;
+        newData.callsTarget = data.callsTarget || newData.callsTarget;
+        newData.backlogTarget = data.backlogTarget || newData.backlogTarget;
+
         return newData;
     }
+
     return data;
 }
 
@@ -110,6 +123,7 @@ ipcMain.handle('get-data', () => {
     let data = loadData();
     data = checkAndResetForNewDay(data);
     saveData(data);
+
     return data;
 });
 
@@ -118,6 +132,7 @@ ipcMain.handle('update-points', async (event, points) => {
     data.currentPoints = Math.max(0, parseInt(points) || 0);
     data.lastUpdated = new Date().toISOString();
     saveData(data);
+
     return data;
 });
 
@@ -126,7 +141,11 @@ ipcMain.handle('update-settings', async (event, settings) => {
     data.shiftStart = settings.shiftStart || data.shiftStart;
     data.shiftEnd = settings.shiftEnd || data.shiftEnd;
     data.target = settings.target || data.target;
+    data.callsTarget = settings.callsTarget || data.callsTarget;
+    data.backlogTarget = settings.backlogTarget || data.backlogTarget;
+    data.lastUpdated = new Date().toISOString();
     saveData(data);
+
     return data;
 });
 
@@ -139,11 +158,12 @@ ipcMain.handle('show-points-dialog', async () => {
         defaultId: 1,
         cancelId: 0
     });
-    
+
     if (result.response === 1) {
         // Show input dialog - we'll use a simple prompt in renderer for now
         return true;
     }
+
     return false;
 });
 
