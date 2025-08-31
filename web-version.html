@@ -13,21 +13,24 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 11px;
+            font-size: clamp(9px, 2.5vw, 12px);
             background: #f0f0f0;
             border: 1px solid #ccc;
             border-radius: 4px;
             overflow: hidden;
             user-select: none;
             width: 400px;
-            height: 70px;
+            height: 85px;
             margin: 20px;
+            resize: both;
+            min-width: 300px;
+            min-height: 70px;
         }
 
         .tracker-container {
             width: calc(100% - 4px);
             height: 100%;
-            padding: 1px 8px 0px 8px;
+            padding: 1px 2vw 0px 2vw;
             position: relative;
             overflow: hidden;
         }
@@ -49,7 +52,7 @@
 
         .time-marker {
             position: absolute;
-            font-size: 10px;
+            font-size: clamp(8px, 2vw, 11px);
             color: #666;
             font-weight: 500;
             text-align: center;
@@ -62,10 +65,10 @@
             position: relative;
             background: #e0e0e0;
             border-radius: 3px;
-            height: 20px !important;
+            height: clamp(12px, 15vh, 24px);
             overflow: hidden;
             cursor: pointer;
-            min-height: 20px !important;
+            min-height: 12px;
             border: 1px solid #ddd;
             display: flex;
             align-items: stretch;
@@ -77,7 +80,7 @@
             left: 6px;
             top: 50%;
             transform: translateY(-50%);
-            font-size: 9px;
+            font-size: clamp(8px, 2vw, 11px);
             color: #555;
             font-weight: 500;
             z-index: 5;
@@ -86,7 +89,7 @@
 
         .activity-fill {
             height: 100% !important;
-            min-height: 16px !important;
+            min-height: 10px;
             border-radius: 3px;
             transition: width 0.3s ease, background-color 0.3s ease;
             position: absolute;
@@ -111,6 +114,10 @@
             background: linear-gradient(90deg, #44aa44, #66cc66);
         }
 
+        .activity-fill.complete {
+            background: linear-gradient(90deg, #ffd700, #ffed4e);
+        }
+
         .expected-line {
             position: absolute;
             top: 0;
@@ -130,7 +137,7 @@
             right: 6px;
             transform: translateY(-50%);
             font-weight: bold;
-            font-size: 10px;
+            font-size: clamp(8px, 2vw, 12px);
             color: #333;
             z-index: 15;
             text-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
@@ -303,6 +310,13 @@
                 <div class="bar-label">Outbound Calls</div>
                 <div class="points-display" id="callsDisplay">0/20</div>
             </div>
+            
+            <div class="progress-bar" id="backlogBar">
+                <div class="activity-fill" id="backlogFill"></div>
+                <div class="expected-line" id="expectedLine3"></div>
+                <div class="bar-label">Backlog</div>
+                <div class="points-display" id="backlogDisplay">0/0</div>
+            </div>
         </div>
     </div>
 
@@ -318,6 +332,8 @@
             <input type="number" id="activityInput" min="0" max="200" value="0">
             <label>Calls:</label>
             <input type="number" id="callsInput" min="0" max="100" value="0">
+            <label>Backlog:</label>
+            <input type="number" id="backlogInput" min="0" max="1000" value="0">
             <button onclick="saveCombined()">Save</button>
             <button onclick="closeDialog()">Cancel</button>
         </div>
@@ -343,6 +359,10 @@
             <label>Calls Target:</label>
             <input type="number" id="callsTargetInput" min="1" max="100" value="20">
         </div>
+        <div class="setting-row">
+            <label>📋 Backlog Target:</label>
+            <input type="number" id="backlogTargetInput" min="0" max="1000" value="0">
+        </div>
         <div class="setting-buttons">
             <button id="saveSettings" onclick="saveSettings()">Save</button>
             <button onclick="closeSettings()">Cancel</button>
@@ -354,8 +374,10 @@
             constructor() {
                 this.currentPoints = 0;
                 this.currentCalls = 0;
+                this.currentBacklog = 0;
                 this.target = 50;
                 this.callsTarget = 20;
+                this.backlogTarget = 0;
                 this.shiftStart = '09:00';
                 this.shiftEnd = '17:00';
                 this.isEndTimeLocked = true;
@@ -375,8 +397,10 @@
                     if (parsed.date === today) {
                         this.currentPoints = parsed.currentPoints || 0;
                         this.currentCalls = parsed.currentCalls || 0;
+                        this.currentBacklog = parsed.currentBacklog || 0;
                         this.target = parsed.target || 50;
                         this.callsTarget = parsed.callsTarget || 20;
+                        this.backlogTarget = parsed.backlogTarget || 0;
                         this.shiftStart = parsed.shiftStart || '09:00';
                         this.shiftEnd = parsed.shiftEnd || '17:00';
                     }
@@ -388,8 +412,10 @@
                     date: new Date().toDateString(),
                     currentPoints: this.currentPoints,
                     currentCalls: this.currentCalls,
+                    currentBacklog: this.currentBacklog,
                     target: this.target,
                     callsTarget: this.callsTarget,
+                    backlogTarget: this.backlogTarget,
                     shiftStart: this.shiftStart,
                     shiftEnd: this.shiftEnd
                 };
@@ -397,9 +423,10 @@
             }
 
             setupEventListeners() {
-                // Click either progress bar to update both metrics
+                // Click any progress bar to update all metrics
                 const activityBar = document.getElementById('activityBar');
                 const callsBar = document.getElementById('callsBar');
+                const backlogBar = document.getElementById('backlogBar');
                 
                 if (activityBar) {
                     activityBar.addEventListener('click', (e) => {
@@ -410,6 +437,13 @@
                 
                 if (callsBar) {
                     callsBar.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.openCombinedDialog();
+                    });
+                }
+                
+                if (backlogBar) {
+                    backlogBar.addEventListener('click', (e) => {
                         e.stopPropagation();
                         this.openCombinedDialog();
                     });
@@ -432,9 +466,11 @@
                 const dialog = document.getElementById('combinedDialog');
                 const activityInput = document.getElementById('activityInput');
                 const callsInput = document.getElementById('callsInput');
+                const backlogInput = document.getElementById('backlogInput');
                 
                 activityInput.value = this.currentPoints;
                 callsInput.value = this.currentCalls;
+                backlogInput.value = this.currentBacklog;
                 dialog.style.display = 'block';
                 activityInput.focus();
                 activityInput.select();
@@ -452,6 +488,24 @@
                 
                 callsInput.addEventListener('keydown', (e) => {
                     if (e.key === 'Tab' && e.shiftKey) {
+                        e.preventDefault();
+                        activityInput.focus();
+                        activityInput.select();
+                    } else if (e.key === 'Tab') {
+                        e.preventDefault();
+                        backlogInput.focus();
+                        backlogInput.select();
+                    } else if (e.key === 'Enter') {
+                        saveCombined();
+                    }
+                });
+                
+                backlogInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Tab' && e.shiftKey) {
+                        e.preventDefault();
+                        callsInput.focus();
+                        callsInput.select();
+                    } else if (e.key === 'Tab') {
                         e.preventDefault();
                         activityInput.focus();
                         activityInput.select();
@@ -492,11 +546,13 @@
                 // Update time markers
                 this.updateTimeMarkers();
                 
-                // Update both expected lines
+                // Update all expected lines
                 const expectedLine1 = document.getElementById('expectedLine1');
                 const expectedLine2 = document.getElementById('expectedLine2');
+                const expectedLine3 = document.getElementById('expectedLine3');
                 if (expectedLine1) expectedLine1.style.left = (timeProgress * 100) + '%';
                 if (expectedLine2) expectedLine2.style.left = (timeProgress * 100) + '%';
+                if (expectedLine3) expectedLine3.style.left = (timeProgress * 100) + '%';
                 
                 // Update activity progress
                 const activityProgress = this.currentPoints / this.target;
@@ -507,9 +563,12 @@
                     // Color coding for activity
                     const expectedPoints = timeProgress * this.target;
                     const activityRatio = this.currentPoints / expectedPoints;
+                    const activityCompletionRatio = this.currentPoints / this.target;
                     
                     activityFill.className = 'activity-fill';
-                    if (activityRatio >= 1.0) {
+                    if (activityCompletionRatio >= 1.0) {
+                        activityFill.classList.add('complete'); // Gold for 100%+ completion
+                    } else if (activityRatio >= 1.0) {
                         activityFill.classList.add('ahead');
                     } else if (activityRatio >= 0.9) {
                         activityFill.classList.add('close');
@@ -527,9 +586,12 @@
                     // Color coding for calls
                     const expectedCalls = timeProgress * this.callsTarget;
                     const callsRatio = this.currentCalls / expectedCalls;
+                    const callsCompletionRatio = this.currentCalls / this.callsTarget;
                     
                     callsFill.className = 'activity-fill';
-                    if (callsRatio >= 1.0) {
+                    if (callsCompletionRatio >= 1.0) {
+                        callsFill.classList.add('complete'); // Gold for 100%+ completion
+                    } else if (callsRatio >= 1.0) {
                         callsFill.classList.add('ahead');
                     } else if (callsRatio >= 0.9) {
                         callsFill.classList.add('close');
@@ -538,11 +600,45 @@
                     }
                 }
                 
+                // Update backlog progress (countdown logic)
+                const backlogFill = document.getElementById('backlogFill');
+                if (this.backlogTarget > 0) {
+                    // For countdown: progress = (target - current) / target
+                    const backlogProgress = Math.max(0, (this.backlogTarget - this.currentBacklog) / this.backlogTarget);
+                    
+                    if (backlogFill) {
+                        backlogFill.style.width = Math.max(0.5, backlogProgress * 100) + '%';
+                        
+                        // Color coding for backlog based on expected progress
+                        const expectedBacklogRemaining = (1 - timeProgress) * this.backlogTarget;
+                        const backlogRatio = (this.backlogTarget - this.currentBacklog) / (this.backlogTarget - expectedBacklogRemaining);
+                        
+                        backlogFill.className = 'activity-fill';
+                        if (this.currentBacklog === 0 && this.backlogTarget > 0) {
+                            backlogFill.classList.add('complete'); // Gold when backlog is cleared (0 remaining)
+                        } else if (backlogRatio >= 1.0) {
+                            backlogFill.classList.add('ahead');
+                        } else if (backlogRatio >= 0.9) {
+                            backlogFill.classList.add('close');
+                        } else {
+                            backlogFill.classList.add('behind');
+                        }
+                    }
+                } else {
+                    // If no backlog target set, hide the progress bar
+                    if (backlogFill) {
+                        backlogFill.style.width = '0%';
+                        backlogFill.className = 'activity-fill';
+                    }
+                }
+                
                 // Update displays
                 const activityDisplay = document.getElementById('activityDisplay');
                 const callsDisplay = document.getElementById('callsDisplay');
+                const backlogDisplay = document.getElementById('backlogDisplay');
                 if (activityDisplay) activityDisplay.textContent = `${this.currentPoints}/${this.target}`;
                 if (callsDisplay) callsDisplay.textContent = `${this.currentCalls}/${this.callsTarget}`;
+                if (backlogDisplay) backlogDisplay.textContent = `${this.currentBacklog}/${this.backlogTarget}`;
             }
 
             updateTimeMarkers() {
@@ -575,11 +671,14 @@
         function saveCombined() {
             const activityInput = document.getElementById('activityInput');
             const callsInput = document.getElementById('callsInput');
+            const backlogInput = document.getElementById('backlogInput');
             const points = parseInt(activityInput.value) || 0;
             const calls = parseInt(callsInput.value) || 0;
+            const backlog = parseInt(backlogInput.value) || 0;
             
             tracker.currentPoints = points;
             tracker.currentCalls = calls;
+            tracker.currentBacklog = backlog;
             tracker.saveData();
             tracker.updateDisplay();
             closeDialog();
@@ -593,6 +692,8 @@
             document.getElementById('startTimeInput').value = tracker.shiftStart;
             document.getElementById('endTimeInput').value = tracker.shiftEnd;
             document.getElementById('targetInput').value = tracker.target;
+            document.getElementById('callsTargetInput').value = tracker.callsTarget;
+            document.getElementById('backlogTargetInput').value = tracker.backlogTarget;
             document.getElementById('settingsPanel').style.display = 'block';
         }
 
@@ -605,6 +706,7 @@
             tracker.shiftEnd = document.getElementById('endTimeInput').value;
             tracker.target = parseInt(document.getElementById('targetInput').value) || 50;
             tracker.callsTarget = parseInt(document.getElementById('callsTargetInput').value) || 20;
+            tracker.backlogTarget = parseInt(document.getElementById('backlogTargetInput').value) || 0;
             tracker.saveData();
             tracker.updateDisplay();
             closeSettings();
