@@ -13,11 +13,11 @@ function createWindow() {
 
     mainWindow = new BrowserWindow({
         width: 400,
-        height: 85, // Increased to accommodate three progress bars
+        height: 125, // Increased to accommodate five progress bars
         minWidth: 300,
-        minHeight: 70,
+        minHeight: 110,
         x: screenWidth - 420, // Position near right side of taskbar area
-        y: screenHeight - 95, // Adjusted position for increased height
+        y: screenHeight - 135, // Adjusted position for increased height
         frame: true, // Enable frame for resize handles
         alwaysOnTop: true,
         skipTaskbar: true,
@@ -73,16 +73,21 @@ function getDefaultData() {
 
     return {
         date: now.toDateString(),
+        month: now.toISOString().slice(0, 7),
         shiftStart: '09:00',
         shiftEnd: '17:00',
         target: 50,
         callsTarget: 20,
         backlogTarget: 0,
+        dailyRevenueTarget: 5000,
+        monthlyRevenueTarget: 50000,
         currentPoints: 0,
         currentCalls: 0,
         currentBacklog: 0,
+        currentDailyRevenue: 0,
+        currentMonthlyRevenue: 0,
         lastUpdated: now.toISOString(),
-        version: '1.0'
+        version: '2.0'
     };
 }
 
@@ -97,6 +102,14 @@ function checkAndResetForNewDay(data) {
         newData.target = data.target || newData.target;
         newData.callsTarget = data.callsTarget || newData.callsTarget;
         newData.backlogTarget = data.backlogTarget || newData.backlogTarget;
+        newData.dailyRevenueTarget = data.dailyRevenueTarget || newData.dailyRevenueTarget;
+        newData.monthlyRevenueTarget = data.monthlyRevenueTarget || newData.monthlyRevenueTarget;
+        
+        // Preserve monthly revenue if same month
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        if (data.month === currentMonth) {
+            newData.currentMonthlyRevenue = data.currentMonthlyRevenue || 0;
+        }
 
         return newData;
     }
@@ -136,6 +149,19 @@ ipcMain.handle('update-points', async (event, points) => {
     return data;
 });
 
+ipcMain.handle('update-combined', async (event, metrics) => {
+    const data = loadData();
+    data.currentPoints = Math.max(0, parseInt(metrics.currentPoints) || 0);
+    data.currentCalls = Math.max(0, parseInt(metrics.currentCalls) || 0);
+    data.currentBacklog = Math.max(0, parseInt(metrics.currentBacklog) || 0);
+    data.currentDailyRevenue = Math.max(0, parseInt(metrics.currentDailyRevenue) || 0);
+    data.currentMonthlyRevenue = Math.max(0, parseInt(metrics.currentMonthlyRevenue) || 0);
+    data.lastUpdated = new Date().toISOString();
+    saveData(data);
+
+    return data;
+});
+
 ipcMain.handle('update-settings', async (event, settings) => {
     const data = loadData();
     data.shiftStart = settings.shiftStart || data.shiftStart;
@@ -143,6 +169,8 @@ ipcMain.handle('update-settings', async (event, settings) => {
     data.target = settings.target || data.target;
     data.callsTarget = settings.callsTarget || data.callsTarget;
     data.backlogTarget = settings.backlogTarget || data.backlogTarget;
+    data.dailyRevenueTarget = settings.dailyRevenueTarget || data.dailyRevenueTarget;
+    data.monthlyRevenueTarget = settings.monthlyRevenueTarget || data.monthlyRevenueTarget;
     data.lastUpdated = new Date().toISOString();
     saveData(data);
 

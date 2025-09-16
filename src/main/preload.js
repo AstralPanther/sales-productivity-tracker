@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
     getData: () => ipcRenderer.invoke('get-data'),
     updatePoints: points => ipcRenderer.invoke('update-points', points),
+    updateCombined: metrics => ipcRenderer.invoke('update-combined', metrics),
     updateSettings: settings => ipcRenderer.invoke('update-settings', settings),
     showPointsDialog: () => ipcRenderer.invoke('show-points-dialog'),
     startDrag: () => ipcRenderer.invoke('start-drag'),

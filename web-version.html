@@ -20,11 +20,11 @@
             overflow: hidden;
             user-select: none;
             width: 400px;
-            height: 85px;
+            height: 125px;
             margin: 20px;
             resize: both;
             min-width: 300px;
-            min-height: 70px;
+            min-height: 110px;
         }
 
         .tracker-container {
@@ -317,6 +317,20 @@
                 <div class="bar-label">Backlog</div>
                 <div class="points-display" id="backlogDisplay">0/0</div>
             </div>
+            
+            <div class="progress-bar" id="dailyRevenueBar">
+                <div class="activity-fill" id="dailyRevenueFill"></div>
+                <div class="expected-line" id="expectedLine4"></div>
+                <div class="bar-label">Daily Revenue</div>
+                <div class="points-display" id="dailyRevenueDisplay">$0</div>
+            </div>
+            
+            <div class="progress-bar" id="monthlyRevenueBar">
+                <div class="activity-fill" id="monthlyRevenueFill"></div>
+                <div class="expected-line" id="expectedLine5"></div>
+                <div class="bar-label">Monthly Revenue</div>
+                <div class="points-display" id="monthlyRevenueDisplay">$0</div>
+            </div>
         </div>
     </div>
 
@@ -334,6 +348,12 @@
             <input type="number" id="callsInput" min="0" max="100" value="0">
             <label>Backlog:</label>
             <input type="number" id="backlogInput" min="0" max="1000" value="0">
+        </div>
+        <div class="dialog-row">
+            <label>Daily Rev:</label>
+            <input type="number" id="dailyRevenueInput" min="0" max="100000" value="0" step="100">
+            <label>Monthly Rev:</label>
+            <input type="number" id="monthlyRevenueInput" min="0" max="1000000" value="0" step="1000">
             <button onclick="saveCombined()">Save</button>
             <button onclick="closeDialog()">Cancel</button>
         </div>
@@ -363,6 +383,14 @@
             <label>📋 Backlog Target:</label>
             <input type="number" id="backlogTargetInput" min="0" max="1000" value="0">
         </div>
+        <div class="setting-row">
+            <label>💰 Daily Revenue:</label>
+            <input type="number" id="dailyRevenueTargetInput" min="0" max="100000" value="5000" step="100">
+        </div>
+        <div class="setting-row">
+            <label>📈 Monthly Revenue:</label>
+            <input type="number" id="monthlyRevenueTargetInput" min="0" max="1000000" value="50000" step="1000">
+        </div>
         <div class="setting-buttons">
             <button id="saveSettings" onclick="saveSettings()">Save</button>
             <button onclick="closeSettings()">Cancel</button>
@@ -375,9 +403,13 @@
                 this.currentPoints = 0;
                 this.currentCalls = 0;
                 this.currentBacklog = 0;
+                this.currentDailyRevenue = 0;
+                this.currentMonthlyRevenue = 0;
                 this.target = 50;
                 this.callsTarget = 20;
                 this.backlogTarget = 0;
+                this.dailyRevenueTarget = 5000;
+                this.monthlyRevenueTarget = 50000;
                 this.shiftStart = '09:00';
                 this.shiftEnd = '17:00';
                 this.isEndTimeLocked = true;
@@ -393,16 +425,25 @@
                 if (data) {
                     const parsed = JSON.parse(data);
                     const today = new Date().toDateString();
+                    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
                     
                     if (parsed.date === today) {
                         this.currentPoints = parsed.currentPoints || 0;
                         this.currentCalls = parsed.currentCalls || 0;
                         this.currentBacklog = parsed.currentBacklog || 0;
+                        this.currentDailyRevenue = parsed.currentDailyRevenue || 0;
                         this.target = parsed.target || 50;
                         this.callsTarget = parsed.callsTarget || 20;
                         this.backlogTarget = parsed.backlogTarget || 0;
+                        this.dailyRevenueTarget = parsed.dailyRevenueTarget || 5000;
                         this.shiftStart = parsed.shiftStart || '09:00';
                         this.shiftEnd = parsed.shiftEnd || '17:00';
+                    }
+                    
+                    // Monthly revenue persists across days within the same month
+                    if (parsed.month === currentMonth) {
+                        this.currentMonthlyRevenue = parsed.currentMonthlyRevenue || 0;
+                        this.monthlyRevenueTarget = parsed.monthlyRevenueTarget || 50000;
                     }
                 }
             }
@@ -410,12 +451,17 @@
             saveData() {
                 const data = {
                     date: new Date().toDateString(),
+                    month: new Date().toISOString().slice(0, 7),
                     currentPoints: this.currentPoints,
                     currentCalls: this.currentCalls,
                     currentBacklog: this.currentBacklog,
+                    currentDailyRevenue: this.currentDailyRevenue,
+                    currentMonthlyRevenue: this.currentMonthlyRevenue,
                     target: this.target,
                     callsTarget: this.callsTarget,
                     backlogTarget: this.backlogTarget,
+                    dailyRevenueTarget: this.dailyRevenueTarget,
+                    monthlyRevenueTarget: this.monthlyRevenueTarget,
                     shiftStart: this.shiftStart,
                     shiftEnd: this.shiftEnd
                 };
@@ -427,27 +473,19 @@
                 const activityBar = document.getElementById('activityBar');
                 const callsBar = document.getElementById('callsBar');
                 const backlogBar = document.getElementById('backlogBar');
+                const dailyRevenueBar = document.getElementById('dailyRevenueBar');
+                const monthlyRevenueBar = document.getElementById('monthlyRevenueBar');
                 
-                if (activityBar) {
-                    activityBar.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        this.openCombinedDialog();
-                    });
-                }
+                const bars = [activityBar, callsBar, backlogBar, dailyRevenueBar, monthlyRevenueBar];
                 
-                if (callsBar) {
-                    callsBar.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        this.openCombinedDialog();
-                    });
-                }
-                
-                if (backlogBar) {
-                    backlogBar.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        this.openCombinedDialog();
-                    });
-                }
+                bars.forEach(bar => {
+                    if (bar) {
+                        bar.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            this.openCombinedDialog();
+                        });
+                    }
+                });
 
                 // Right click
                 document.addEventListener('contextmenu', (e) => {
@@ -467,10 +505,14 @@
                 const activityInput = document.getElementById('activityInput');
                 const callsInput = document.getElementById('callsInput');
                 const backlogInput = document.getElementById('backlogInput');
+                const dailyRevenueInput = document.getElementById('dailyRevenueInput');
+                const monthlyRevenueInput = document.getElementById('monthlyRevenueInput');
                 
                 activityInput.value = this.currentPoints;
                 callsInput.value = this.currentCalls;
                 backlogInput.value = this.currentBacklog;
+                dailyRevenueInput.value = this.currentDailyRevenue;
+                monthlyRevenueInput.value = this.currentMonthlyRevenue;
                 dialog.style.display = 'block';
                 activityInput.focus();
                 activityInput.select();
@@ -546,13 +588,22 @@
                 // Update time markers
                 this.updateTimeMarkers();
                 
-                // Update all expected lines
+                // Update all expected lines (daily time-based)
                 const expectedLine1 = document.getElementById('expectedLine1');
                 const expectedLine2 = document.getElementById('expectedLine2');
                 const expectedLine3 = document.getElementById('expectedLine3');
+                const expectedLine4 = document.getElementById('expectedLine4');
                 if (expectedLine1) expectedLine1.style.left = (timeProgress * 100) + '%';
                 if (expectedLine2) expectedLine2.style.left = (timeProgress * 100) + '%';
                 if (expectedLine3) expectedLine3.style.left = (timeProgress * 100) + '%';
+                if (expectedLine4) expectedLine4.style.left = (timeProgress * 100) + '%';
+                
+                // Monthly time indicator (based on day of month)
+                const currentDay = now.getDate();
+                const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                const monthProgress = (currentDay - 1) / (daysInMonth - 1); // 0-1 scale
+                const expectedLine5 = document.getElementById('expectedLine5');
+                if (expectedLine5) expectedLine5.style.left = (monthProgress * 100) + '%';
                 
                 // Update activity progress
                 const activityProgress = this.currentPoints / this.target;
@@ -632,13 +683,64 @@
                     }
                 }
                 
+                // Update daily revenue progress
+                const dailyRevenueProgress = this.currentDailyRevenue / this.dailyRevenueTarget;
+                const dailyRevenueFill = document.getElementById('dailyRevenueFill');
+                if (dailyRevenueFill) {
+                    dailyRevenueFill.style.width = Math.max(0.5, dailyRevenueProgress * 100) + '%';
+                    
+                    // Color coding for daily revenue
+                    const expectedDailyRevenue = timeProgress * this.dailyRevenueTarget;
+                    const dailyRevenueRatio = this.currentDailyRevenue / expectedDailyRevenue;
+                    const dailyRevenueCompletionRatio = this.currentDailyRevenue / this.dailyRevenueTarget;
+                    
+                    dailyRevenueFill.className = 'activity-fill';
+                    if (dailyRevenueCompletionRatio >= 1.0) {
+                        dailyRevenueFill.classList.add('complete');
+                    } else if (dailyRevenueRatio >= 1.0) {
+                        dailyRevenueFill.classList.add('ahead');
+                    } else if (dailyRevenueRatio >= 0.9) {
+                        dailyRevenueFill.classList.add('close');
+                    } else {
+                        dailyRevenueFill.classList.add('behind');
+                    }
+                }
+                
+                // Update monthly revenue progress
+                const monthlyRevenueProgress = this.currentMonthlyRevenue / this.monthlyRevenueTarget;
+                const monthlyRevenueFill = document.getElementById('monthlyRevenueFill');
+                if (monthlyRevenueFill) {
+                    monthlyRevenueFill.style.width = Math.max(0.5, monthlyRevenueProgress * 100) + '%';
+                    
+                    // Color coding for monthly revenue based on month progress
+                    const expectedMonthlyRevenue = monthProgress * this.monthlyRevenueTarget;
+                    const monthlyRevenueRatio = this.currentMonthlyRevenue / expectedMonthlyRevenue;
+                    const monthlyRevenueCompletionRatio = this.currentMonthlyRevenue / this.monthlyRevenueTarget;
+                    
+                    monthlyRevenueFill.className = 'activity-fill';
+                    if (monthlyRevenueCompletionRatio >= 1.0) {
+                        monthlyRevenueFill.classList.add('complete');
+                    } else if (monthlyRevenueRatio >= 1.0) {
+                        monthlyRevenueFill.classList.add('ahead');
+                    } else if (monthlyRevenueRatio >= 0.9) {
+                        monthlyRevenueFill.classList.add('close');
+                    } else {
+                        monthlyRevenueFill.classList.add('behind');
+                    }
+                }
+                
                 // Update displays
                 const activityDisplay = document.getElementById('activityDisplay');
                 const callsDisplay = document.getElementById('callsDisplay');
                 const backlogDisplay = document.getElementById('backlogDisplay');
+                const dailyRevenueDisplay = document.getElementById('dailyRevenueDisplay');
+                const monthlyRevenueDisplay = document.getElementById('monthlyRevenueDisplay');
+                
                 if (activityDisplay) activityDisplay.textContent = `${this.currentPoints}/${this.target}`;
                 if (callsDisplay) callsDisplay.textContent = `${this.currentCalls}/${this.callsTarget}`;
                 if (backlogDisplay) backlogDisplay.textContent = `${this.currentBacklog}/${this.backlogTarget}`;
+                if (dailyRevenueDisplay) dailyRevenueDisplay.textContent = `$${(this.currentDailyRevenue/1000).toFixed(1)}K`;
+                if (monthlyRevenueDisplay) monthlyRevenueDisplay.textContent = `$${(this.currentMonthlyRevenue/1000).toFixed(1)}K`;
             }
 
             updateTimeMarkers() {
@@ -672,13 +774,20 @@
             const activityInput = document.getElementById('activityInput');
             const callsInput = document.getElementById('callsInput');
             const backlogInput = document.getElementById('backlogInput');
+            const dailyRevenueInput = document.getElementById('dailyRevenueInput');
+            const monthlyRevenueInput = document.getElementById('monthlyRevenueInput');
+            
             const points = parseInt(activityInput.value) || 0;
             const calls = parseInt(callsInput.value) || 0;
             const backlog = parseInt(backlogInput.value) || 0;
+            const dailyRevenue = parseInt(dailyRevenueInput.value) || 0;
+            const monthlyRevenue = parseInt(monthlyRevenueInput.value) || 0;
             
             tracker.currentPoints = points;
             tracker.currentCalls = calls;
             tracker.currentBacklog = backlog;
+            tracker.currentDailyRevenue = dailyRevenue;
+            tracker.currentMonthlyRevenue = monthlyRevenue;
             tracker.saveData();
             tracker.updateDisplay();
             closeDialog();
@@ -694,6 +803,8 @@
             document.getElementById('targetInput').value = tracker.target;
             document.getElementById('callsTargetInput').value = tracker.callsTarget;
             document.getElementById('backlogTargetInput').value = tracker.backlogTarget;
+            document.getElementById('dailyRevenueTargetInput').value = tracker.dailyRevenueTarget;
+            document.getElementById('monthlyRevenueTargetInput').value = tracker.monthlyRevenueTarget;
             document.getElementById('settingsPanel').style.display = 'block';
         }
 
@@ -707,6 +818,8 @@
             tracker.target = parseInt(document.getElementById('targetInput').value) || 50;
             tracker.callsTarget = parseInt(document.getElementById('callsTargetInput').value) || 20;
             tracker.backlogTarget = parseInt(document.getElementById('backlogTargetInput').value) || 0;
+            tracker.dailyRevenueTarget = parseInt(document.getElementById('dailyRevenueTargetInput').value) || 5000;
+            tracker.monthlyRevenueTarget = parseInt(document.getElementById('monthlyRevenueTargetInput').value) || 50000;
             tracker.saveData();
             tracker.updateDisplay();
             closeSettings();

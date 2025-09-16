@@ -72,6 +72,24 @@ class ActivityTracker {
                 target: this.data.backlogTarget,
                 type: 'countdown',
                 onClick: () => this.showCombinedInput()
+            },
+            {
+                id: 'dailyRevenueBar',
+                label: 'Daily Revenue',
+                current: this.data.currentDailyRevenue,
+                target: this.data.dailyRevenueTarget,
+                type: 'normal',
+                onClick: () => this.showCombinedInput()
+            },
+            {
+                id: 'monthlyRevenueBar',
+                label: 'Monthly Revenue',
+                current: this.data.currentMonthlyRevenue,
+                target: this.data.monthlyRevenueTarget,
+                type: 'normal',
+                showExpectedLine: true,
+                useMonthProgress: true,
+                onClick: () => this.showCombinedInput()
             }
         ];
 
@@ -313,6 +331,18 @@ class ActivityTracker {
                         <input type="number" id="setupBacklogTarget" value="${this.data.backlogTarget || 0}" min="0" max="1000" 
                                style="padding:4px;border:1px solid #ddd;border-radius:3px;font-size:12px;text-align:center;width:50px;">
                     </div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <span style="font-size:12px;">💰</span>
+                        <label style="font-size:12px;color:#555;font-weight:500;min-width:50px;">Daily Rev:</label>
+                        <input type="number" id="setupDailyRevenueTarget" value="${this.data.dailyRevenueTarget || 5000}" min="0" max="100000" step="100"
+                               style="padding:4px;border:1px solid #ddd;border-radius:3px;font-size:12px;text-align:center;width:70px;">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <span style="font-size:12px;">📈</span>
+                        <label style="font-size:12px;color:#555;font-weight:500;min-width:50px;">Monthly Rev:</label>
+                        <input type="number" id="setupMonthlyRevenueTarget" value="${this.data.monthlyRevenueTarget || 50000}" min="0" max="1000000" step="1000"
+                               style="padding:4px;border:1px solid #ddd;border-radius:3px;font-size:12px;text-align:center;width:70px;">
+                    </div>
                 </div>
                 
                 <div style="display:flex;flex-direction:column;justify-content:center;gap:6px;flex:0 0 auto;">
@@ -412,6 +442,16 @@ class ActivityTracker {
                         document.getElementById('setupBacklogTarget').value,
                         'number',
                         { min: 0, max: 1000 }
+                    ),
+                    dailyRevenueTarget: this.dataManager.sanitizeInput(
+                        document.getElementById('setupDailyRevenueTarget').value,
+                        'number',
+                        { min: 0, max: 100000 }
+                    ),
+                    monthlyRevenueTarget: this.dataManager.sanitizeInput(
+                        document.getElementById('setupMonthlyRevenueTarget').value,
+                        'number',
+                        { min: 0, max: 1000000 }
                     )
                 };
 
@@ -483,14 +523,38 @@ class ActivityTracker {
                     min: 0,
                     max: 2000,
                     value: this.data.currentBacklog
+                },
+                {
+                    name: 'dailyRevenue',
+                    label: 'Daily Rev',
+                    type: 'number',
+                    min: 0,
+                    max: 200000,
+                    value: this.data.currentDailyRevenue || 0,
+                    step: 100
+                },
+                {
+                    name: 'monthlyRevenue',
+                    label: 'Monthly Rev',
+                    type: 'number',
+                    min: 0,
+                    max: 2000000,
+                    value: this.data.currentMonthlyRevenue || 0,
+                    step: 1000
                 }
             ],
             onSave: async values => {
                 try {
-                    // Update all values
-                    await this.dataManager.updatePoints(values.activity);
-                    await this.dataManager.updateCalls(values.calls);
-                    await this.dataManager.updateBacklog(values.backlog);
+                    // Update all values using combined method
+                    const metrics = {
+                        currentPoints: values.activity,
+                        currentCalls: values.calls,
+                        currentBacklog: values.backlog,
+                        currentDailyRevenue: values.dailyRevenue,
+                        currentMonthlyRevenue: values.monthlyRevenue
+                    };
+                    
+                    await this.dataManager.updateCombined(metrics);
 
                     // Reload data to get updated values
                     await this.loadData();

@@ -9,8 +9,52 @@
 <body>
     <div class="tracker-container">
         <div class="progress-bar-container">
-            <div class="time-markers"></div>
-            <div id="progressBarsContainer"></div>
+            <div class="time-markers">
+                <span class="time-marker" data-hour="09">09</span>
+                <span class="time-marker" data-hour="10">10</span>
+                <span class="time-marker" data-hour="11">11</span>
+                <span class="time-marker" data-hour="12">12</span>
+                <span class="time-marker" data-hour="13">13</span>
+                <span class="time-marker" data-hour="14">14</span>
+                <span class="time-marker" data-hour="15">15</span>
+                <span class="time-marker" data-hour="16">16</span>
+                <span class="time-marker" data-hour="17">17</span>
+            </div>
+            
+            <div class="progress-bar" id="activityBar">
+                <div class="activity-fill" id="activityFill"></div>
+                <div class="expected-line" id="expectedLine1"></div>
+                <div class="bar-label">Activity</div>
+                <div class="points-display" id="activityDisplay">0/50</div>
+            </div>
+            
+            <div class="progress-bar" id="callsBar">
+                <div class="activity-fill" id="callsFill"></div>
+                <div class="expected-line" id="expectedLine2"></div>
+                <div class="bar-label">Outbound Calls</div>
+                <div class="points-display" id="callsDisplay">0/20</div>
+            </div>
+            
+            <div class="progress-bar" id="backlogBar">
+                <div class="activity-fill" id="backlogFill"></div>
+                <div class="expected-line" id="expectedLine3"></div>
+                <div class="bar-label">Backlog</div>
+                <div class="points-display" id="backlogDisplay">0/0</div>
+            </div>
+            
+            <div class="progress-bar" id="dailyRevenueBar">
+                <div class="activity-fill" id="dailyRevenueFill"></div>
+                <div class="expected-line" id="expectedLine4"></div>
+                <div class="bar-label">Daily Revenue</div>
+                <div class="points-display" id="dailyRevenueDisplay">$0</div>
+            </div>
+            
+            <div class="progress-bar" id="monthlyRevenueBar">
+                <div class="activity-fill" id="monthlyRevenueFill"></div>
+                <div class="expected-line" id="expectedLine5"></div>
+                <div class="bar-label">Monthly Revenue</div>
+                <div class="points-display" id="monthlyRevenueDisplay">$0</div>
+            </div>
         </div>
     </div>
 

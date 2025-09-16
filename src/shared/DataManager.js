@@ -11,16 +11,21 @@ class DataManager {
 
         return {
             date: now.toDateString(),
+            month: now.toISOString().slice(0, 7),
             shiftStart: '09:00',
             shiftEnd: '17:00',
             target: 50,
             callsTarget: 20,
             backlogTarget: 0,
+            dailyRevenueTarget: 5000,
+            monthlyRevenueTarget: 50000,
             currentPoints: 0,
             currentCalls: 0,
             currentBacklog: 0,
+            currentDailyRevenue: 0,
+            currentMonthlyRevenue: 0,
             lastUpdated: now.toISOString(),
-            version: '1.0'
+            version: '2.0'
         };
     }
 
@@ -37,9 +42,13 @@ class DataManager {
             target: { min: 1, max: 200 },
             callsTarget: { min: 1, max: 100 },
             backlogTarget: { min: 0, max: 1000 },
+            dailyRevenueTarget: { min: 0, max: 100000 },
+            monthlyRevenueTarget: { min: 0, max: 1000000 },
             currentPoints: { min: 0, max: 500 },
             currentCalls: { min: 0, max: 200 },
-            currentBacklog: { min: 0, max: 2000 }
+            currentBacklog: { min: 0, max: 2000 },
+            currentDailyRevenue: { min: 0, max: 200000 },
+            currentMonthlyRevenue: { min: 0, max: 2000000 }
         };
 
         Object.entries(numericFields).forEach(([field, limits]) => {
@@ -158,6 +167,29 @@ class DataManager {
         }
     }
 
+    async updateCombined(metrics) {
+        try {
+            const sanitizedMetrics = {
+                currentPoints: this.sanitizeInput(metrics.currentPoints, 'number', { min: 0, max: 500 }),
+                currentCalls: this.sanitizeInput(metrics.currentCalls, 'number', { min: 0, max: 200 }),
+                currentBacklog: this.sanitizeInput(metrics.currentBacklog, 'number', { min: 0, max: 2000 }),
+                currentDailyRevenue: this.sanitizeInput(metrics.currentDailyRevenue, 'number', { min: 0, max: 200000 }),
+                currentMonthlyRevenue: this.sanitizeInput(metrics.currentMonthlyRevenue, 'number', { min: 0, max: 2000000 })
+            };
+
+            if (this.isElectron && this.electronAPI) {
+                return await this.electronAPI.updateCombined(sanitizedMetrics);
+            } else {
+                const data = await this.loadData();
+                Object.assign(data, sanitizedMetrics);
+                return await this.saveData(data);
+            }
+        } catch (error) {
+            console.error('Error updating combined metrics:', error);
+            throw error;
+        }
+    }
+
     async updateCalls(calls) {
         try {
             const sanitizedCalls = this.sanitizeInput(calls, 'number', { min: 0, max: 200 });
@@ -211,17 +243,23 @@ class DataManager {
             if (settings.backlogTarget !== undefined) {
                 data.backlogTarget = this.sanitizeInput(settings.backlogTarget, 'number', { min: 0, max: 1000 });
             }
+            if (settings.dailyRevenueTarget !== undefined) {
+                data.dailyRevenueTarget = this.sanitizeInput(settings.dailyRevenueTarget, 'number', { min: 0, max: 100000 });
+            }
+            if (settings.monthlyRevenueTarget !== undefined) {
+                data.monthlyRevenueTarget = this.sanitizeInput(settings.monthlyRevenueTarget, 'number', { min: 0, max: 1000000 });
+            }
 
             if (this.isElectron && this.electronAPI) {
                 await this.electronAPI.updateSettings({
                     shiftStart: data.shiftStart,
                     shiftEnd: data.shiftEnd,
-                    target: data.target
+                    target: data.target,
+                    callsTarget: data.callsTarget,
+                    backlogTarget: data.backlogTarget,
+                    dailyRevenueTarget: data.dailyRevenueTarget,
+                    monthlyRevenueTarget: data.monthlyRevenueTarget
                 });
-
-                // Save calls and backlog targets locally for Electron
-                localStorage.setItem('callsTarget', String(data.callsTarget));
-                localStorage.setItem('backlogTarget', String(data.backlogTarget));
             }
 
             return await this.saveData(data);
@@ -233,6 +271,8 @@ class DataManager {
 
     checkAndResetForNewDay(data) {
         const today = new Date().toDateString();
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        
         if (data.date !== today) {
             const newData = this.getDefaultData();
             // Preserve settings
@@ -241,6 +281,13 @@ class DataManager {
             newData.target = data.target;
             newData.callsTarget = data.callsTarget;
             newData.backlogTarget = data.backlogTarget;
+            newData.dailyRevenueTarget = data.dailyRevenueTarget;
+            newData.monthlyRevenueTarget = data.monthlyRevenueTarget;
+            
+            // Preserve monthly revenue if same month
+            if (data.month === currentMonth) {
+                newData.currentMonthlyRevenue = data.currentMonthlyRevenue || 0;
+            }
 
             return newData;
         }
