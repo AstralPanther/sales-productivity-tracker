@@ -337,6 +337,7 @@
     <!-- Context Menu -->
     <div class="context-menu" id="contextMenu">
         <div class="menu-item" onclick="openSettings()">Settings</div>
+        <div class="menu-item" onclick="openRevenueGoals()">Revenue Goals</div>
     </div>
 
     <!-- Combined Input Dialog -->
@@ -397,7 +398,197 @@
         </div>
     </div>
 
+    <!-- Revenue Goals Panel -->
+    <div class="settings-panel" id="revenueGoalsPanel" style="min-width: 500px; max-height: 400px; overflow-y: auto;">
+        <h3>Purchase Goals & Revenue Planning</h3>
+        
+        <!-- Commission Settings -->
+        <div style="background: #f8f8f8; padding: 8px; border-radius: 4px; margin-bottom: 12px;">
+            <div class="setting-row">
+                <label>Commission Rate:</label>
+                <input type="number" id="commissionRate" min="0" max="0.1" step="0.0001" value="0.0025" style="width: 80px;">
+                <span style="font-size: 10px; color: #666;">%</span>
+                <label style="margin-left: 16px;">Tax Rate:</label>
+                <input type="number" id="taxRate" min="0" max="0.5" step="0.001" value="0.325" style="width: 80px;">
+                <span style="font-size: 10px; color: #666;">%</span>
+            </div>
+        </div>
+        
+        <!-- Add New Goal -->
+        <div style="border: 1px solid #ddd; padding: 8px; border-radius: 4px; margin-bottom: 12px;">
+            <div class="setting-row">
+                <label>Item Name:</label>
+                <input type="text" id="newGoalName" placeholder="Gaming Laptop" style="flex: 2;">
+                <label>Cost:</label>
+                <input type="number" id="newGoalCost" placeholder="1200" min="1" step="1" style="width: 80px;">
+                <button onclick="addPurchaseGoal()" style="background: #28a745; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer;">Add</button>
+            </div>
+        </div>
+        
+        <!-- Goals List -->
+        <div id="purchaseGoalsList" style="min-height: 100px; max-height: 200px; overflow-y: auto;">
+            <!-- Goals will be populated here -->
+        </div>
+        
+        <!-- Monthly Progress Visualization -->
+        <div style="margin-top: 12px; padding: 8px; background: #f0f8ff; border-radius: 4px;">
+            <h4 style="margin: 0 0 8px 0; font-size: 12px; color: #333;">Monthly Revenue Path</h4>
+            <div id="revenuePath" style="background: white; border: 1px solid #ddd; border-radius: 3px; height: 60px; position: relative; overflow: hidden;">
+                <!-- Progress visualization will be here -->
+            </div>
+            <div id="revenuePathLabels" style="font-size: 10px; color: #666; margin-top: 4px;">
+                <!-- Labels will be here -->
+            </div>
+        </div>
+        
+        <div class="setting-buttons">
+            <button onclick="updateCommissionSettings()">Update Settings</button>
+            <button onclick="closeRevenueGoals()">Close</button>
+        </div>
+    </div>
+
     <script>
+        // Commission and Purchase Goal Utilities
+        class RevenueCalculator {
+            constructor(commissionRate = 0.0025, taxRate = 0.325) {
+                this.commissionRate = commissionRate;  // 0.25%
+                this.taxRate = taxRate;                 // 32.5%
+                this.netRate = commissionRate * (1 - taxRate);  // Final rate after tax
+            }
+            
+            // Calculate net income from gross revenue
+            calculateNetIncome(revenue) {
+                return revenue * this.netRate;
+            }
+            
+            // Calculate required revenue for desired net income
+            calculateRequiredRevenue(netIncome) {
+                return netIncome / this.netRate;
+            }
+            
+            // Calculate required revenue for purchase cost
+            calculateRevenueForPurchase(purchaseCost) {
+                return this.calculateRequiredRevenue(purchaseCost);
+            }
+        }
+
+        class PurchaseGoalManager {
+            constructor() {
+                this.goals = [];
+                this.calculator = new RevenueCalculator();
+                this.storageKey = 'purchaseGoals';
+                this.load();
+            }
+            
+            load() {
+                try {
+                    const stored = localStorage.getItem(this.storageKey);
+                    if (stored) {
+                        this.goals = JSON.parse(stored);
+                        this.goals.forEach(goal => {
+                            if (!goal.id) goal.id = this.generateId();
+                            if (!goal.requiredRevenue) {
+                                goal.requiredRevenue = Math.round(this.calculator.calculateRevenueForPurchase(goal.cost));
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error loading purchase goals:', error);
+                    this.goals = [];
+                }
+            }
+            
+            save() {
+                try {
+                    localStorage.setItem(this.storageKey, JSON.stringify(this.goals));
+                } catch (error) {
+                    console.error('Error saving purchase goals:', error);
+                }
+            }
+            
+            generateId() {
+                return 'goal_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            }
+            
+            addGoal(name, cost) {
+                const goal = {
+                    id: this.generateId(),
+                    name: name.trim(),
+                    cost: parseFloat(cost),
+                    requiredRevenue: Math.round(this.calculator.calculateRevenueForPurchase(cost)),
+                    purchased: false,
+                    order: this.goals.length,
+                    createdAt: new Date().toISOString()
+                };
+                
+                this.goals.push(goal);
+                this.save();
+                return goal;
+            }
+            
+            removeGoal(goalId) {
+                this.goals = this.goals.filter(goal => goal.id !== goalId);
+                this.reorderGoals();
+                this.save();
+            }
+            
+            updateGoal(goalId, updates) {
+                const goal = this.goals.find(g => g.id === goalId);
+                if (goal) {
+                    if (updates.name !== undefined) goal.name = updates.name.trim();
+                    if (updates.cost !== undefined) {
+                        goal.cost = parseFloat(updates.cost);
+                        goal.requiredRevenue = Math.round(this.calculator.calculateRevenueForPurchase(goal.cost));
+                    }
+                    if (updates.purchased !== undefined) goal.purchased = updates.purchased;
+                    this.save();
+                }
+                return goal;
+            }
+            
+            reorderGoals() {
+                this.goals.forEach((goal, index) => {
+                    goal.order = index;
+                });
+                this.save();
+            }
+            
+            moveGoal(fromIndex, toIndex) {
+                if (fromIndex === toIndex) return;
+                
+                const [movedGoal] = this.goals.splice(fromIndex, 1);
+                this.goals.splice(toIndex, 0, movedGoal);
+                this.reorderGoals();
+            }
+            
+            getGoalsSorted() {
+                return [...this.goals].sort((a, b) => {
+                    // Purchased goals always come first, then by order
+                    if (a.purchased && !b.purchased) return -1;
+                    if (!a.purchased && b.purchased) return 1;
+                    return a.order - b.order;
+                });
+            }
+            
+            calculateProgress(currentRevenue) {
+                const sortedGoals = this.getGoalsSorted();
+                let cumulativeRevenue = 0;
+                
+                return sortedGoals.map((goal, index) => {
+                    const startRevenue = cumulativeRevenue;
+                    cumulativeRevenue += goal.requiredRevenue;
+                    
+                    return {
+                        ...goal,
+                        startRevenue,
+                        endRevenue: cumulativeRevenue,
+                        progress: Math.max(0, Math.min(1, (currentRevenue - startRevenue) / goal.requiredRevenue)),
+                        achieved: currentRevenue >= cumulativeRevenue
+                    };
+                });
+            }
+        }
+
         class ActivityTracker {
             constructor() {
                 this.currentPoints = 0;
@@ -413,6 +604,8 @@
                 this.shiftStart = '09:00';
                 this.shiftEnd = '17:00';
                 this.isEndTimeLocked = true;
+                
+                this.purchaseGoalManager = new PurchaseGoalManager();
                 
                 this.loadData();
                 this.setupEventListeners();
@@ -769,6 +962,223 @@
         window.addEventListener('load', () => {
             tracker = new ActivityTracker();
         });
+
+        // Revenue Goals Management Functions
+        function openRevenueGoals() {
+            const panel = document.getElementById('revenueGoalsPanel');
+            
+            // Load current commission settings
+            document.getElementById('commissionRate').value = tracker.purchaseGoalManager.calculator.commissionRate;
+            document.getElementById('taxRate').value = tracker.purchaseGoalManager.calculator.taxRate;
+            
+            // Populate goals list
+            populatePurchaseGoalsList();
+            updateRevenuePathVisualization();
+            
+            panel.style.display = 'block';
+        }
+
+        function closeRevenueGoals() {
+            document.getElementById('revenueGoalsPanel').style.display = 'none';
+        }
+
+        function addPurchaseGoal() {
+            const nameInput = document.getElementById('newGoalName');
+            const costInput = document.getElementById('newGoalCost');
+            
+            const name = nameInput.value.trim();
+            const cost = parseFloat(costInput.value);
+            
+            if (!name) {
+                alert('Please enter an item name');
+                return;
+            }
+            
+            if (!cost || cost <= 0) {
+                alert('Please enter a valid cost');
+                return;
+            }
+            
+            tracker.purchaseGoalManager.addGoal(name, cost);
+            
+            // Clear inputs
+            nameInput.value = '';
+            costInput.value = '';
+            
+            // Refresh display
+            populatePurchaseGoalsList();
+            updateRevenuePathVisualization();
+        }
+
+        function populatePurchaseGoalsList() {
+            const container = document.getElementById('purchaseGoalsList');
+            const goals = tracker.purchaseGoalManager.getGoalsSorted();
+            
+            if (goals.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">No purchase goals yet. Add one above!</div>';
+                return;
+            }
+            
+            container.innerHTML = goals.map((goal, index) => `
+                <div class="goal-item" draggable="${!goal.purchased}" data-goal-id="${goal.id}" 
+                     style="display: flex; align-items: center; padding: 6px; border: 1px solid #ddd; margin-bottom: 4px; background: ${goal.purchased ? '#f0f8f0' : 'white'}; border-radius: 3px; cursor: ${!goal.purchased ? 'move' : 'default'};">
+                    
+                    ${!goal.purchased ? '<div class="drag-handle" style="margin-right: 6px; color: #999; cursor: grab;">⋮⋮</div>' : ''}
+                    
+                    <input type="checkbox" ${goal.purchased ? 'checked' : ''} 
+                           onchange="toggleGoalPurchased('${goal.id}')"
+                           style="margin-right: 6px;">
+                    
+                    <div style="flex: 1; font-weight: 500; ${goal.purchased ? 'text-decoration: line-through; color: #666;' : ''}">${goal.name}</div>
+                    
+                    <div style="font-size: 11px; color: #666; margin-right: 8px;">$${goal.cost}</div>
+                    
+                    <div style="font-size: 10px; color: #888; margin-right: 8px;">→ $${(goal.requiredRevenue/1000).toFixed(1)}K rev</div>
+                    
+                    <button onclick="removeGoal('${goal.id}')" 
+                            style="background: #dc3545; color: white; border: none; padding: 2px 6px; border-radius: 2px; font-size: 10px; cursor: pointer;">×</button>
+                </div>
+            `).join('');
+            
+            // Add drag and drop functionality
+            setupDragAndDrop();
+        }
+
+        function setupDragAndDrop() {
+            const goalItems = document.querySelectorAll('.goal-item[draggable="true"]');
+            
+            goalItems.forEach(item => {
+                item.addEventListener('dragstart', handleDragStart);
+                item.addEventListener('dragover', handleDragOver);
+                item.addEventListener('drop', handleDrop);
+                item.addEventListener('dragend', handleDragEnd);
+            });
+        }
+
+        let draggedElement = null;
+
+        function handleDragStart(e) {
+            draggedElement = this;
+            this.style.opacity = '0.5';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            this.style.borderTop = '2px solid #007acc';
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            this.style.borderTop = '';
+            
+            if (draggedElement !== this) {
+                const draggedId = draggedElement.dataset.goalId;
+                const targetId = this.dataset.goalId;
+                
+                const goals = tracker.purchaseGoalManager.goals;
+                const draggedIndex = goals.findIndex(g => g.id === draggedId);
+                const targetIndex = goals.findIndex(g => g.id === targetId);
+                
+                if (draggedIndex !== -1 && targetIndex !== -1) {
+                    tracker.purchaseGoalManager.moveGoal(draggedIndex, targetIndex);
+                    populatePurchaseGoalsList();
+                    updateRevenuePathVisualization();
+                }
+            }
+        }
+
+        function handleDragEnd(e) {
+            this.style.opacity = '';
+            document.querySelectorAll('.goal-item').forEach(item => {
+                item.style.borderTop = '';
+            });
+        }
+
+        function toggleGoalPurchased(goalId) {
+            const goal = tracker.purchaseGoalManager.goals.find(g => g.id === goalId);
+            if (goal) {
+                tracker.purchaseGoalManager.updateGoal(goalId, { purchased: !goal.purchased });
+                populatePurchaseGoalsList();
+                updateRevenuePathVisualization();
+            }
+        }
+
+        function removeGoal(goalId) {
+            if (confirm('Remove this purchase goal?')) {
+                tracker.purchaseGoalManager.removeGoal(goalId);
+                populatePurchaseGoalsList();
+                updateRevenuePathVisualization();
+            }
+        }
+
+        function updateCommissionSettings() {
+            const commissionRate = parseFloat(document.getElementById('commissionRate').value) || 0.0025;
+            const taxRate = parseFloat(document.getElementById('taxRate').value) || 0.325;
+            
+            tracker.purchaseGoalManager.calculator = new RevenueCalculator(commissionRate, taxRate);
+            
+            // Recalculate all required revenues
+            tracker.purchaseGoalManager.goals.forEach(goal => {
+                goal.requiredRevenue = Math.round(tracker.purchaseGoalManager.calculator.calculateRevenueForPurchase(goal.cost));
+            });
+            tracker.purchaseGoalManager.save();
+            
+            // Refresh displays
+            populatePurchaseGoalsList();
+            updateRevenuePathVisualization();
+            
+            alert('Commission settings updated!');
+        }
+
+        function updateRevenuePathVisualization() {
+            const pathContainer = document.getElementById('revenuePath');
+            const labelsContainer = document.getElementById('revenuePathLabels');
+            
+            const currentRevenue = tracker.currentMonthlyRevenue;
+            const goals = tracker.purchaseGoalManager.calculateProgress(currentRevenue);
+            
+            if (goals.length === 0) {
+                pathContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666;">No goals to visualize</div>';
+                labelsContainer.innerHTML = '';
+                return;
+            }
+            
+            const totalRevenue = goals.reduce((sum, goal) => sum + goal.requiredRevenue, 0);
+            let cumulativeRevenue = 0;
+            
+            // Create progress segments
+            const segments = goals.map(goal => {
+                const startPercent = (cumulativeRevenue / totalRevenue) * 100;
+                const widthPercent = (goal.requiredRevenue / totalRevenue) * 100;
+                cumulativeRevenue += goal.requiredRevenue;
+                
+                const color = goal.purchased ? '#28a745' : 
+                             goal.achieved ? '#ffd700' : 
+                             goal.progress > 0 ? `linear-gradient(to right, #007acc ${goal.progress * 100}%, #e0e0e0 ${goal.progress * 100}%)` : '#e0e0e0';
+                
+                return {
+                    goal,
+                    startPercent,
+                    widthPercent,
+                    color
+                };
+            });
+            
+            // Render segments
+            pathContainer.innerHTML = segments.map(segment => `
+                <div style="position: absolute; left: ${segment.startPercent}%; width: ${segment.widthPercent}%; height: 100%; background: ${segment.color}; border-right: 1px solid #999;" title="${segment.goal.name}: $${segment.goal.cost} (${(segment.goal.progress * 100).toFixed(1)}% complete)"></div>
+            `).join('') + 
+            `<div style="position: absolute; left: ${(currentRevenue / totalRevenue) * 100}%; width: 2px; height: 100%; background: red; z-index: 10;" title="Current Revenue: $${currentRevenue}"></div>`;
+            
+            // Render labels
+            labelsContainer.innerHTML = segments.map(segment => `
+                <span style="display: inline-block; margin-right: 12px; font-size: 10px;">
+                    <span style="display: inline-block; width: 12px; height: 12px; background: ${segment.goal.purchased ? '#28a745' : segment.goal.achieved ? '#ffd700' : '#007acc'}; border-radius: 2px; margin-right: 4px; vertical-align: middle;"></span>
+                    ${segment.goal.name} ($${(segment.goal.requiredRevenue/1000).toFixed(1)}K)
+                    ${segment.goal.purchased ? '✓' : segment.goal.achieved ? '★' : ''}
+                </span>
+            `).join('');
+        }
 
         function saveCombined() {
             const activityInput = document.getElementById('activityInput');

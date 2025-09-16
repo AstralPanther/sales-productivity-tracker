@@ -1,6 +1,7 @@
 class ActivityTracker {
     constructor() {
         this.dataManager = new DataManager(true); // Electron version
+        this.purchaseGoalManager = new PurchaseGoalManager(true); // Electron version
         this.data = null;
         this.updateInterval = null;
         this.progressBars = {};
@@ -99,18 +100,23 @@ class ActivityTracker {
     }
 
     setupEventListeners() {
-        // Right-click for settings
-        const contextHandler = async e => {
+        // Right-click for context menu
+        const contextHandler = e => {
             e.preventDefault();
-            await this.showShiftSetupDialog();
+            this.showContextMenu(e.clientX, e.clientY);
+        };
+
+        // Hide context menu on click elsewhere
+        const clickHandler = () => {
+            this.hideContextMenu();
         };
 
         document.addEventListener('contextmenu', contextHandler);
-        this.eventListeners.push({
-            element: document,
-            event: 'contextmenu',
-            handler: contextHandler
-        });
+        document.addEventListener('click', clickHandler);
+        this.eventListeners.push(
+            { element: document, event: 'contextmenu', handler: contextHandler },
+            { element: document, event: 'click', handler: clickHandler }
+        );
 
         // Window dragging
         this.setupWindowDragging();
@@ -677,6 +683,280 @@ class ActivityTracker {
         }
 
         console.log('ActivityTracker cleaned up');
+    }
+
+    showContextMenu(x, y) {
+        this.hideContextMenu(); // Remove any existing menu
+
+        const menu = document.createElement('div');
+        menu.id = 'contextMenu';
+        menu.style.cssText = `
+            position: fixed;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 2000;
+            min-width: 120px;
+            left: ${x}px;
+            top: ${y}px;
+        `;
+
+        menu.innerHTML = `
+            <div class="menu-item" style="padding: 8px 12px; cursor: pointer; font-size: 11px;" onclick="tracker.showShiftSetupDialog()">Settings</div>
+            <div class="menu-item" style="padding: 8px 12px; cursor: pointer; font-size: 11px;" onclick="tracker.showRevenueGoalsDialog()">Revenue Goals</div>
+        `;
+
+        // Add hover effects
+        menu.addEventListener('mouseover', (e) => {
+            if (e.target.classList.contains('menu-item')) {
+                e.target.style.background = '#f0f0f0';
+            }
+        });
+
+        menu.addEventListener('mouseout', (e) => {
+            if (e.target.classList.contains('menu-item')) {
+                e.target.style.background = '';
+            }
+        });
+
+        document.body.appendChild(menu);
+    }
+
+    hideContextMenu() {
+        const existingMenu = document.getElementById('contextMenu');
+        if (existingMenu) {
+            existingMenu.remove();
+        }
+    }
+
+    async showRevenueGoalsDialog() {
+        this.hideContextMenu();
+        
+        return new Promise(resolve => {
+            if (this.currentDialog) {
+                this.currentDialog.hide();
+            }
+
+            const overlay = document.createElement('div');
+            overlay.className = 'revenue-goals-overlay';
+            overlay.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: white;
+                z-index: 5000;
+                display: flex;
+                flex-direction: column;
+                border-radius: 4px;
+                overflow: hidden;
+            `;
+
+            overlay.innerHTML = this.createRevenueGoalsHTML();
+            document.body.appendChild(overlay);
+
+            this.setupRevenueGoalsEvents(overlay, resolve);
+        });
+    }
+
+    createRevenueGoalsHTML() {
+        return `
+            <div style="padding: 12px; height: 100%; overflow-y: auto;">
+                <h3 style="margin: 0 0 12px 0; font-size: 13px; color: #333;">Purchase Goals & Revenue Planning</h3>
+                
+                <!-- Commission Settings -->
+                <div style="background: #f8f8f8; padding: 8px; border-radius: 4px; margin-bottom: 12px;">
+                    <div style="display: flex; gap: 12px; align-items: center; font-size: 11px;">
+                        <label>Commission:</label>
+                        <input type="number" id="commissionRateElectron" min="0" max="0.1" step="0.0001" value="${this.purchaseGoalManager.calculator.commissionRate}" style="width: 60px; padding: 2px; font-size: 10px;">
+                        <span>%</span>
+                        <label>Tax:</label>
+                        <input type="number" id="taxRateElectron" min="0" max="0.5" step="0.001" value="${this.purchaseGoalManager.calculator.taxRate}" style="width: 60px; padding: 2px; font-size: 10px;">
+                        <span>%</span>
+                        <button onclick="tracker.updateCommissionSettings()" style="background: #007acc; color: white; border: none; padding: 2px 6px; border-radius: 2px; font-size: 10px; cursor: pointer;">Update</button>
+                    </div>
+                </div>
+                
+                <!-- Add New Goal -->
+                <div style="border: 1px solid #ddd; padding: 8px; border-radius: 4px; margin-bottom: 12px;">
+                    <div style="display: flex; gap: 6px; align-items: center; font-size: 11px;">
+                        <label>Item:</label>
+                        <input type="text" id="newGoalNameElectron" placeholder="Gaming Laptop" style="flex: 1; padding: 2px; font-size: 10px;">
+                        <label>Cost:</label>
+                        <input type="number" id="newGoalCostElectron" placeholder="1200" min="1" step="1" style="width: 60px; padding: 2px; font-size: 10px;">
+                        <button onclick="tracker.addPurchaseGoal()" style="background: #28a745; color: white; border: none; padding: 2px 6px; border-radius: 2px; font-size: 10px; cursor: pointer;">Add</button>
+                    </div>
+                </div>
+                
+                <!-- Goals List -->
+                <div id="purchaseGoalsListElectron" style="min-height: 60px; max-height: 120px; overflow-y: auto; margin-bottom: 12px;">
+                    <!-- Goals will be populated here -->
+                </div>
+                
+                <!-- Revenue Path -->
+                <div style="background: #f0f8ff; padding: 6px; border-radius: 4px; margin-bottom: 12px;">
+                    <h4 style="margin: 0 0 6px 0; font-size: 11px; color: #333;">Monthly Revenue Path</h4>
+                    <div id="revenuePathElectron" style="background: white; border: 1px solid #ddd; border-radius: 3px; height: 40px; position: relative; margin-bottom: 4px;">
+                        <!-- Progress visualization -->
+                    </div>
+                    <div id="revenuePathLabelsElectron" style="font-size: 9px; color: #666;">
+                        <!-- Labels -->
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <button onclick="tracker.closeRevenueGoals()" style="background: #ccc; color: #333; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 11px;">Close</button>
+                </div>
+            </div>
+        `;
+    }
+
+    setupRevenueGoalsEvents(overlay, resolve) {
+        this.populatePurchaseGoalsListElectron();
+        this.updateRevenuePathVisualizationElectron();
+    }
+
+    closeRevenueGoals() {
+        const overlay = document.querySelector('.revenue-goals-overlay');
+        if (overlay) {
+            overlay.remove();
+        }
+    }
+
+    addPurchaseGoal() {
+        const nameInput = document.getElementById('newGoalNameElectron');
+        const costInput = document.getElementById('newGoalCostElectron');
+        
+        const name = nameInput.value.trim();
+        const cost = parseFloat(costInput.value);
+        
+        if (!name) {
+            alert('Please enter an item name');
+            return;
+        }
+        
+        if (!cost || cost <= 0) {
+            alert('Please enter a valid cost');
+            return;
+        }
+        
+        this.purchaseGoalManager.addGoal(name, cost);
+        
+        nameInput.value = '';
+        costInput.value = '';
+        
+        this.populatePurchaseGoalsListElectron();
+        this.updateRevenuePathVisualizationElectron();
+    }
+
+    populatePurchaseGoalsListElectron() {
+        const container = document.getElementById('purchaseGoalsListElectron');
+        if (!container) return;
+
+        const goals = this.purchaseGoalManager.getGoalsSorted();
+        
+        if (goals.length === 0) {
+            container.innerHTML = '<div style="text-align: center; color: #666; padding: 15px; font-size: 10px;">No purchase goals yet</div>';
+            return;
+        }
+        
+        container.innerHTML = goals.map((goal, index) => `
+            <div style="display: flex; align-items: center; padding: 4px; border: 1px solid #ddd; margin-bottom: 2px; background: ${goal.purchased ? '#f0f8f0' : 'white'}; border-radius: 2px; font-size: 10px;">
+                <input type="checkbox" ${goal.purchased ? 'checked' : ''} 
+                       onchange="tracker.toggleGoalPurchased('${goal.id}')"
+                       style="margin-right: 4px; transform: scale(0.8);">
+                       
+                <div style="flex: 1; ${goal.purchased ? 'text-decoration: line-through; color: #666;' : ''}">${goal.name}</div>
+                
+                <div style="color: #666; margin-right: 6px;">$${goal.cost}</div>
+                
+                <div style="color: #888; margin-right: 6px; font-size: 9px;">→ $${(goal.requiredRevenue/1000).toFixed(1)}K</div>
+                
+                <button onclick="tracker.removeGoal('${goal.id}')" 
+                        style="background: #dc3545; color: white; border: none; padding: 1px 4px; border-radius: 2px; font-size: 9px; cursor: pointer;">×</button>
+            </div>
+        `).join('');
+    }
+
+    toggleGoalPurchased(goalId) {
+        const goal = this.purchaseGoalManager.goals.find(g => g.id === goalId);
+        if (goal) {
+            this.purchaseGoalManager.updateGoal(goalId, { purchased: !goal.purchased });
+            this.populatePurchaseGoalsListElectron();
+            this.updateRevenuePathVisualizationElectron();
+        }
+    }
+
+    removeGoal(goalId) {
+        if (confirm('Remove this purchase goal?')) {
+            this.purchaseGoalManager.removeGoal(goalId);
+            this.populatePurchaseGoalsListElectron();
+            this.updateRevenuePathVisualizationElectron();
+        }
+    }
+
+    updateCommissionSettings() {
+        const commissionRate = parseFloat(document.getElementById('commissionRateElectron').value) || 0.0025;
+        const taxRate = parseFloat(document.getElementById('taxRateElectron').value) || 0.325;
+        
+        this.purchaseGoalManager.calculator = new RevenueCalculator(commissionRate, taxRate);
+        
+        // Recalculate all required revenues
+        this.purchaseGoalManager.goals.forEach(goal => {
+            goal.requiredRevenue = Math.round(this.purchaseGoalManager.calculator.calculateRevenueForPurchase(goal.cost));
+        });
+        this.purchaseGoalManager.save();
+        
+        this.populatePurchaseGoalsListElectron();
+        this.updateRevenuePathVisualizationElectron();
+        
+        alert('Commission settings updated!');
+    }
+
+    updateRevenuePathVisualizationElectron() {
+        const pathContainer = document.getElementById('revenuePathElectron');
+        const labelsContainer = document.getElementById('revenuePathLabelsElectron');
+        
+        if (!pathContainer || !labelsContainer) return;
+
+        const currentRevenue = this.data.currentMonthlyRevenue || 0;
+        const goals = this.purchaseGoalManager.calculateProgress(currentRevenue);
+        
+        if (goals.length === 0) {
+            pathContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666; font-size: 10px;">No goals</div>';
+            labelsContainer.innerHTML = '';
+            return;
+        }
+        
+        const totalRevenue = goals.reduce((sum, goal) => sum + goal.requiredRevenue, 0);
+        let cumulativeRevenue = 0;
+        
+        const segments = goals.map(goal => {
+            const startPercent = (cumulativeRevenue / totalRevenue) * 100;
+            const widthPercent = (goal.requiredRevenue / totalRevenue) * 100;
+            cumulativeRevenue += goal.requiredRevenue;
+            
+            const color = goal.purchased ? '#28a745' : 
+                         goal.achieved ? '#ffd700' : 
+                         goal.progress > 0 ? `linear-gradient(to right, #007acc ${goal.progress * 100}%, #e0e0e0 ${goal.progress * 100}%)` : '#e0e0e0';
+            
+            return { goal, startPercent, widthPercent, color };
+        });
+        
+        pathContainer.innerHTML = segments.map(segment => `
+            <div style="position: absolute; left: ${segment.startPercent}%; width: ${segment.widthPercent}%; height: 100%; background: ${segment.color}; border-right: 1px solid #999;" title="${segment.goal.name}: $${segment.goal.cost}"></div>
+        `).join('') + 
+        `<div style="position: absolute; left: ${(currentRevenue / totalRevenue) * 100}%; width: 2px; height: 100%; background: red; z-index: 10;" title="Current: $${currentRevenue}"></div>`;
+        
+        labelsContainer.innerHTML = segments.map(segment => `
+            <span style="display: inline-block; margin-right: 8px; font-size: 9px;">
+                <span style="display: inline-block; width: 8px; height: 8px; background: ${segment.goal.purchased ? '#28a745' : segment.goal.achieved ? '#ffd700' : '#007acc'}; border-radius: 1px; margin-right: 2px; vertical-align: middle;"></span>
+                ${segment.goal.name} $${(segment.goal.requiredRevenue/1000).toFixed(1)}K
+                ${segment.goal.purchased ? '✓' : segment.goal.achieved ? '★' : ''}
+            </span>
+        `).join('');
     }
 }
 
