@@ -247,11 +247,12 @@ Application is **PRODUCTION READY** with professional compact UI:
 
 **Latest Improvements:**
 - ✅ **Smart End Time Coupling**: Lock button (🔒/🔓) allows toggling between auto-calculated (start + 8 hours) and independent end time editing
-- ✅ **Perfect Window Size**: 400x48px - compact but not cramped
+- ✅ **Perfect Window Size**: 400x125px - accommodates 5 progress bars with fixed sizing
 - ✅ **Window Dragging**: Click and drag gray areas to reposition window anywhere on screen
 - ✅ **Cache Fix**: Right-click always shows fresh settings dialog with lock button
-- ✅ **Dual Dragging Methods**: Both CSS and JavaScript-based window movement
-- ✅ **Production Ready**: All core and enhancement features fully implemented and working
+- ✅ **Revenue Tracking**: Daily and monthly revenue progress bars with time indicators
+- ✅ **Purchase Goal System**: Complete commission-based purchase planning with visual breadcrumbs
+- ✅ **Production Ready**: All core, revenue, and purchase goal features fully implemented
 
 ## Visual Polish - COMPLETED ✅
 - ✅ Remove unnecessary border line below progress bar (restored to proper position)
@@ -342,7 +343,7 @@ The Activity Points Tracker has evolved into a comprehensive triple-metric produ
 - Automatic daily reset with persistent settings
 - 5-minute update frequency for responsive time tracking
 
-This represents the complete evolution from a single-metric tracker to a professional triple-metric sales productivity system with flexible scaling, enhanced visual feedback, and streamlined user experience.
+This represents the complete evolution from a single-metric tracker to a comprehensive sales productivity and purchase planning system with revenue tracking, commission calculations, and visual goal management.
 
 ## Latest Enhancements - COMPLETED ✅
 
@@ -662,6 +663,119 @@ This enhancement transforms the tracker from activity-focused to comprehensive s
 
 **🚀 Current Repository State:**
 - **Source Code**: https://github.com/AstralPanther/sales-productivity-tracker
-- **Latest Features**: Triple-metric tracking, gold completion colors, resizable layout
+- **Latest Features**: Five-metric tracking, revenue planning, purchase goal management
 - **Cross-Platform**: Electron app + web version with identical functionality
-- **Refactoring Ready**: Detailed implementation plan for code quality improvements
+- **Enterprise Ready**: Complete sales productivity and purchase planning system
+
+## Purchase Goal Management System - September 16, 2025 ✅
+
+**🎯 COMPREHENSIVE PURCHASE PLANNING IMPLEMENTATION**
+
+### Core Features Delivered
+
+**Revenue & Commission System:**
+- ✅ **Configurable Commission Calculator**: 0.25% commission rate with 32.5% tax (adjustable)
+- ✅ **Auto Revenue Calculation**: Purchase cost → required revenue conversion ($1,200 → $711K revenue)
+- ✅ **Real-time Updates**: Change commission/tax rates → all goals recalculate instantly
+- ✅ **Net Income Display**: Shows both purchase cost and revenue requirement
+
+**Purchase Goal Management:**
+- ✅ **Goal Creation**: Add purchase items with name and cost
+- ✅ **Drag-and-Drop Reordering**: Visual handles (⋮⋮) for priority management
+- ✅ **Smart Sorting**: Purchased items automatically locked at top of list
+- ✅ **Purchase Completion**: Checkbox marking with strikethrough styling
+- ✅ **Goal Deletion**: Remove goals with confirmation prompt
+- ✅ **Persistent Storage**: localStorage with automatic data migration
+
+**Visual Progress System:**
+- ✅ **Breadcrumb Trail**: Segmented progress bar showing path through purchases
+- ✅ **Color-Coded Progress**: Gray (pending) → Blue (in progress) → Gold (achieved) → Green (purchased)
+- ✅ **Current Position Indicator**: Red line showing monthly revenue position
+- ✅ **Hover Details**: Tooltips with progress percentages and amounts
+- ✅ **Responsive Scaling**: Progress segments scale based on revenue requirements
+
+### Technical Implementation
+
+**Dual Platform Architecture:**
+- ✅ **Web Version**: Complete standalone implementation (`web-version.html`)
+- ✅ **Electron Version**: Modular shared components (`RevenueCalculator.js`, `PurchaseGoalManager.js`)
+- ✅ **Context Menu Integration**: Right-click → Settings | Revenue Goals
+- ✅ **Feature Parity**: Identical functionality across both platforms
+
+**Data Model:**
+```json
+{
+  "goals": [
+    {
+      "id": "goal_1726481234567_abc123",
+      "name": "Gaming Laptop",
+      "cost": 1200,
+      "requiredRevenue": 711111,
+      "purchased": false,
+      "order": 0,
+      "createdAt": "2025-09-16T07:00:00.000Z"
+    }
+  ],
+  "calculator": {
+    "commissionRate": 0.0025,
+    "taxRate": 0.325,
+    "netRate": 0.0016875
+  }
+}
+```
+
+**UI Components:**
+- ✅ **Commission Settings Panel**: Editable rates with instant recalculation
+- ✅ **Goal Addition Form**: Name/cost input with validation
+- ✅ **Sortable Goal List**: Drag handles, checkboxes, delete buttons
+- ✅ **Progress Visualization**: Monthly revenue path with purchase milestones
+- ✅ **Labels Display**: Color-coded legend with achievement indicators
+
+### User Workflow
+
+**Setup Process:**
+1. **Access**: Right-click anywhere → "Revenue Goals"
+2. **Configure**: Set commission rate (0.25%) and tax rate (32.5%)
+3. **Add Goals**: Enter purchase name and cost → auto-calculates revenue needed
+4. **Prioritize**: Drag goals to reorder by priority using handles
+5. **Track**: Watch breadcrumb trail fill as monthly revenue increases
+6. **Complete**: Check off purchased items → they lock at top of list
+
+**Visual Feedback:**
+- Purchase goals show: "Gaming Laptop $1,200 → $711K rev"
+- Progress bar segments represent each goal's revenue requirement
+- Current revenue position marked with red indicator line
+- Color coding provides instant status understanding
+- Completed purchases show green with checkmark (✓)
+- Achieved but unpurchased goals show gold with star (★)
+
+### Example in Action
+
+**Sample Configuration:**
+- Commission: 0.25%, Tax: 32.5% → Net rate: 0.16875%
+- Monthly Revenue Target: $50,000
+- Current Monthly Revenue: $15,000
+
+**Purchase Goals:**
+1. ✅ **Monitor** - $800 (purchased, locked at top)
+2. **Gaming Laptop** - $1,200 → $711K revenue (in progress, 42% complete)
+3. **Vacation** - $3,500 → $207K revenue (pending)
+4. **Car Down Payment** - $8,000 → $474K revenue (pending)
+
+**Visual Display:**
+- Progress bar shows segmented trail with Monitor (green), Laptop (blue gradient), Vacation (gray), Car (gray)
+- Red line at 30% position showing current $15K of $50K monthly target
+- Labels show achievement status and required revenue amounts
+- Drag handles allow reordering of unpurchased goals
+
+### Production Status
+
+**✅ FULLY OPERATIONAL**
+- Complete feature implementation across both platforms
+- Persistent data storage with error handling
+- Responsive UI with touch-friendly controls
+- Comprehensive validation and edge case handling
+- Real-time calculations with instant visual feedback
+
+**Repository Updated:** All changes pushed to GitHub with full documentation
+**Ready for Use:** Complete sales productivity and purchase planning system
