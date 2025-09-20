@@ -494,6 +494,16 @@ class ActivityTracker {
         cancelButton.addEventListener('click', cancelHandler);
         dialogEventListeners.push({ element: cancelButton, event: 'click', handler: cancelHandler });
 
+        // Keyboard navigation (Esc key)
+        const keyHandler = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelHandler();
+            }
+        };
+        document.addEventListener('keydown', keyHandler);
+        dialogEventListeners.push({ element: document, event: 'keydown', handler: keyHandler });
+
         // Initial end time calculation
         updateEndTime();
     }
@@ -816,6 +826,16 @@ class ActivityTracker {
     setupRevenueGoalsEvents(overlay, resolve) {
         this.populatePurchaseGoalsListElectron();
         this.updateRevenuePathVisualizationElectron();
+        
+        // Add keyboard navigation
+        const keyHandler = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                this.closeRevenueGoals();
+                document.removeEventListener('keydown', keyHandler);
+            }
+        };
+        document.addEventListener('keydown', keyHandler);
     }
 
     closeRevenueGoals() {
@@ -867,6 +887,8 @@ class ActivityTracker {
                 <input type="checkbox" ${goal.purchased ? 'checked' : ''} 
                        onchange="tracker.toggleGoalPurchased('${goal.id}')"
                        style="margin-right: 4px; transform: scale(0.8);">
+                
+                <span style="margin-right: 6px; font-size: 12px;">${getIconForGoal(goal.name, goal.iconType)}</span>
                        
                 <div style="flex: 1; ${goal.purchased ? 'text-decoration: line-through; color: #666;' : ''}">${goal.name}</div>
                 
@@ -912,52 +934,207 @@ class ActivityTracker {
         this.populatePurchaseGoalsListElectron();
         this.updateRevenuePathVisualizationElectron();
         
-        alert('Commission settings updated!');
+        // Show subtle save indication
+        const button = document.querySelector('button[onclick="tracker.updateCommissionSettings()"]');
+        if (button) {
+            const originalText = button.textContent;
+            button.textContent = 'Saved ✓';
+            button.style.background = '#28a745';
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.style.background = '';
+            }, 2000);
+        }
     }
 
     updateRevenuePathVisualizationElectron() {
-        const pathContainer = document.getElementById('revenuePathElectron');
-        const labelsContainer = document.getElementById('revenuePathLabelsElectron');
-        
-        if (!pathContainer || !labelsContainer) return;
+        try {
+            const pathContainer = document.getElementById('revenuePathElectron');
+            const labelsContainer = document.getElementById('revenuePathLabelsElectron');
+            
+            if (!pathContainer || !labelsContainer) return;
 
-        const currentRevenue = this.data.currentMonthlyRevenue || 0;
-        const goals = this.purchaseGoalManager.calculateProgress(currentRevenue);
+            const currentRevenue = this.data.currentMonthlyRevenue || 0;
+            const goals = this.purchaseGoalManager.calculateProgress(currentRevenue);
         
-        if (goals.length === 0) {
-            pathContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666; font-size: 10px;">No goals</div>';
-            labelsContainer.innerHTML = '';
-            return;
+            if (goals.length === 0) {
+                pathContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666; font-size: 10px;">No goals to visualize</div>';
+                labelsContainer.innerHTML = '';
+                return;
+            }
+            
+            // Use monthly revenue target as the scale, same as main screen
+            const monthlyTarget = this.data.monthlyRevenueTarget || 50000;
+            
+            // Separate goals that fit within monthly target vs beyond
+            const currentMonthMilestones = [];
+            const futureGoalsList = [];
+            
+            goals.forEach(goal => {
+                const position = (goal.endRevenue / monthlyTarget) * 100;
+                const icon = getIconForGoal(goal.name, goal.iconType);
+                
+                let statusClass = '';
+                if (goal.purchased) statusClass = 'purchased';
+                else if (goal.achieved) statusClass = 'achieved';
+                else if (goal.progress > 0) statusClass = 'in-progress';
+                else statusClass = 'pending';
+                
+                const milestone = {
+                    goal,
+                    position: Math.min(100, position),
+                    icon,
+                    statusClass
+                };
+                
+                if (position <= 100) {
+                    currentMonthMilestones.push(milestone);
+                } else {
+                    futureGoalsList.push(milestone);
+                }
+            });
+            
+            // Use only current month milestones for the main visualization
+            const milestones = currentMonthMilestones;
+            
+            // Find next goal (first unachieved goal)
+            const nextGoal = milestones.find(milestone => !milestone.goal.achieved);
+            
+            // Create base progress bar
+            const progressPercent = Math.min((currentRevenue / monthlyTarget) * 100, 100);
+            
+            // Create milestone HTML separately to avoid complex template nesting
+            let milestonesHTML = '';
+            milestones.forEach(milestone => {
+                const filterStyle = milestone.statusClass === 'purchased' ? 'brightness(1.2)' : 
+                                   milestone.statusClass === 'achieved' ? 'brightness(1.1) sepia(1) hue-rotate(25deg)' : 
+                                   milestone.statusClass === 'in-progress' ? 'brightness(1)' : 'grayscale(0.7) brightness(0.8)';
+                
+                let remainingHTML = '';
+                if (milestone === nextGoal && !milestone.goal.achieved) {
+                    const remaining = ((milestone.goal.endRevenue - currentRevenue)/1000).toFixed(1);
+                    remainingHTML = `<div style="position: absolute; top: -25px; left: 50%; transform: translateX(-50%); background: rgba(0, 122, 204, 0.9); color: white; padding: 1px 4px; border-radius: 6px; font-size: 8px; white-space: nowrap; z-index: 15; box-shadow: 0 1px 3px rgba(0,0,0,0.3);">$${remaining}K to go</div>`;
+                }
+                
+                milestonesHTML += `
+                    <div style="position: absolute; left: ${milestone.position}%; top: 50%; transform: translate(-50%, -50%); z-index: 10;">
+                        <div class="milestone-icon ${milestone.statusClass}" 
+                             style="font-size: 16px; text-shadow: 0 0 3px rgba(0,0,0,0.3); cursor: pointer; filter: ${filterStyle}"
+                             title="${milestone.goal.name}: $${milestone.goal.cost.toLocaleString()} (${milestone.statusClass})">
+                            ${milestone.icon}
+                            ${remainingHTML}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // Calculate month progress
+            const now = new Date();
+            const currentDay = now.getDate();
+            const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+            const monthProgress = (currentDay - 1) / (daysInMonth - 1);
+            const monthProgressPercent = Math.min(100, monthProgress * 100);
+            
+            // Render progress bar with milestone icons
+            pathContainer.innerHTML = `
+                <!-- Base progress bar -->
+                <div style="position: absolute; top: 15px; left: 0; right: 0; height: 10px; background: #e0e0e0; border-radius: 5px;">
+                    <div style="height: 100%; width: ${progressPercent}%; background: linear-gradient(to right, #007acc, #4dc3ff); border-radius: 5px; transition: width 0.3s ease;"></div>
+                </div>
+                
+                <!-- Milestone icons -->
+                ${milestonesHTML}
+                
+                <!-- Current position indicator -->
+                <div style="position: absolute; left: ${progressPercent}%; top: 10px; transform: translateX(-50%); z-index: 15;">
+                    <div style="width: 2px; height: 20px; background: red; border-radius: 1px; box-shadow: 0 0 3px rgba(255,0,0,0.5);" title="Current Revenue: $${currentRevenue.toLocaleString()}"></div>
+                </div>
+                
+                <!-- Month progress indicator -->
+                <div style="position: absolute; left: ${monthProgressPercent}%; top: 0px; transform: translateX(-50%); z-index: 16;">
+                    <div style="width: 1px; height: 40px; background: #007acc; border-radius: 1px; box-shadow: 0 0 2px rgba(0,122,204,0.5);" title="Month Progress: Day ${currentDay} of ${daysInMonth}"></div>
+                </div>
+            `;
+            
+            // Build labels HTML safely
+            let labelsHTML = '';
+            
+            // Current month labels
+            currentMonthMilestones.forEach(milestone => {
+                const status = milestone.goal.purchased ? '✓' : (milestone.goal.achieved ? '★' : '');
+                labelsHTML += `<span style="display: inline-block; margin-right: 8px; font-size: 9px; white-space: nowrap;">
+                    <span style="font-size: 11px; margin-right: 3px; vertical-align: middle;">${milestone.icon}</span>
+                    ${milestone.goal.name} ($${(milestone.goal.requiredRevenue/1000).toFixed(1)}K) ${status}
+                </span>`;
+            });
+            
+            // Future goals section if any exist
+            if (futureGoalsList.length > 0) {
+                labelsHTML += '<div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid #eee;">';
+                labelsHTML += '<div style="font-size: 8px; color: #999; margin-bottom: 3px;">FUTURE GOALS (beyond this month):</div>';
+                
+                futureGoalsList.forEach(milestone => {
+                    const status = milestone.goal.purchased ? '✓' : '';
+                    labelsHTML += `<span style="display: inline-block; margin-right: 8px; font-size: 9px; white-space: nowrap; opacity: 0.7;">
+                        <span style="font-size: 11px; margin-right: 3px; vertical-align: middle; filter: grayscale(30%);">${milestone.icon}</span>
+                        ${milestone.goal.name} ($${(milestone.goal.requiredRevenue/1000).toFixed(1)}K) ${status}
+                    </span>`;
+                });
+                
+                labelsHTML += '</div>';
+            }
+            
+            labelsContainer.innerHTML = labelsHTML;
+        } catch (error) {
+            console.error('Error in updateRevenuePathVisualizationElectron:', error);
         }
-        
-        const totalRevenue = goals.reduce((sum, goal) => sum + goal.requiredRevenue, 0);
-        let cumulativeRevenue = 0;
-        
-        const segments = goals.map(goal => {
-            const startPercent = (cumulativeRevenue / totalRevenue) * 100;
-            const widthPercent = (goal.requiredRevenue / totalRevenue) * 100;
-            cumulativeRevenue += goal.requiredRevenue;
-            
-            const color = goal.purchased ? '#28a745' : 
-                         goal.achieved ? '#ffd700' : 
-                         goal.progress > 0 ? `linear-gradient(to right, #007acc ${goal.progress * 100}%, #e0e0e0 ${goal.progress * 100}%)` : '#e0e0e0';
-            
-            return { goal, startPercent, widthPercent, color };
-        });
-        
-        pathContainer.innerHTML = segments.map(segment => `
-            <div style="position: absolute; left: ${segment.startPercent}%; width: ${segment.widthPercent}%; height: 100%; background: ${segment.color}; border-right: 1px solid #999;" title="${segment.goal.name}: $${segment.goal.cost}"></div>
-        `).join('') + 
-        `<div style="position: absolute; left: ${(currentRevenue / totalRevenue) * 100}%; width: 2px; height: 100%; background: red; z-index: 10;" title="Current: $${currentRevenue}"></div>`;
-        
-        labelsContainer.innerHTML = segments.map(segment => `
-            <span style="display: inline-block; margin-right: 8px; font-size: 9px;">
-                <span style="display: inline-block; width: 8px; height: 8px; background: ${segment.goal.purchased ? '#28a745' : segment.goal.achieved ? '#ffd700' : '#007acc'}; border-radius: 1px; margin-right: 2px; vertical-align: middle;"></span>
-                ${segment.goal.name} $${(segment.goal.requiredRevenue/1000).toFixed(1)}K
-                ${segment.goal.purchased ? '✓' : segment.goal.achieved ? '★' : ''}
-            </span>
-        `).join('');
     }
+}
+
+// Purchase Goal Icon System
+const GOAL_ICONS = {
+    'laptop': '💻',
+    'computer': '🖥️',
+    'phone': '📱',
+    'car': '🚗',
+    'vacation': '✈️',
+    'house': '🏠',
+    'camera': '📷',
+    'watch': '⌚',
+    'bike': '🚲',
+    'game': '🎮',
+    'music': '🎵',
+    'book': '📚',
+    'shoes': '👟',
+    'keyboard': '⌨️',
+    'default': '🎯'
+};
+
+function getIconForGoal(goalName, goalIconType = null) {
+    // If explicit icon type is provided, use it
+    if (goalIconType && GOAL_ICONS[goalIconType]) {
+        return GOAL_ICONS[goalIconType];
+    }
+    
+    // Otherwise fall back to name-based detection
+    const name = goalName.toLowerCase();
+    
+    if (name.includes('laptop') || name.includes('macbook') || name.includes('pc')) return GOAL_ICONS.laptop;
+    if (name.includes('monitor') || name.includes('screen') || name.includes('display')) return GOAL_ICONS.computer;
+    if (name.includes('phone') || name.includes('iphone') || name.includes('android')) return GOAL_ICONS.phone;
+    if (name.includes('car') || name.includes('vehicle') || name.includes('auto')) return GOAL_ICONS.car;
+    if (name.includes('vacation') || name.includes('trip') || name.includes('travel')) return GOAL_ICONS.vacation;
+    if (name.includes('house') || name.includes('home') || name.includes('apartment')) return GOAL_ICONS.house;
+    if (name.includes('camera') || name.includes('photo')) return GOAL_ICONS.camera;
+    if (name.includes('watch') || name.includes('time')) return GOAL_ICONS.watch;
+    if (name.includes('bike') || name.includes('bicycle') || name.includes('cycle')) return GOAL_ICONS.bike;
+    if (name.includes('game') || name.includes('gaming') || name.includes('console')) return GOAL_ICONS.game;
+    if (name.includes('music') || name.includes('audio') || name.includes('speaker')) return GOAL_ICONS.music;
+    if (name.includes('book') || name.includes('read')) return GOAL_ICONS.book;
+    if (name.includes('shoes') || name.includes('sneakers') || name.includes('boots')) return GOAL_ICONS.shoes;
+    if (name.includes('keyboard') || name.includes('mechanical')) return GOAL_ICONS.keyboard;
+    
+    return GOAL_ICONS.default;
 }
 
 // Initialize the tracker when DOM is loaded

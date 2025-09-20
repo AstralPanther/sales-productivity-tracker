@@ -65,6 +65,30 @@ Dual independent tracking:
 
 **Recommended: Electron** for rapid development and future extensibility
 
+### Single Platform Strategy (Current Status)
+**Web Version**: Primary development platform with comprehensive features
+- ✅ Complete icon system with emoji goals
+- ✅ Motivational "revenue remaining" tooltips
+- ✅ Advanced milestone visualization
+- ✅ Keyboard navigation (Tab, Esc)
+- ✅ Drag-and-drop goal reordering
+- ✅ Context menu integration
+- ✅ Month progress indicators
+- ✅ Live development server for cross-device testing
+
+**New Requirements** (Multi-Device Experience):
+1. **Multi-Page Navigation**: Convert 3 separate dialogs into unified page navigation
+   - Main Dashboard (current tracker view)
+   - Purchase Goals (revenue planning page)
+   - Settings (configuration page)
+2. **Cross-Device Synchronization**: Real-time data sync between devices accessing same server
+3. **UI Improvements**: Fix tooltip positioning and responsive design issues
+
+**Implementation Priority**:
+1. **Page Navigation System** (1-2 hours): Single-page app with tab navigation
+2. **Cross-Device Sync** (2-3 hours): WebSocket or polling-based data synchronization
+3. **UI Polish** (30 min): Fix tooltip positioning and responsive layout issues
+
 ### Core Components - IMPLEMENTED
 1. **Main Window**: Always-on-top taskbar widget
 2. **Progress Calculator**: Computes expected vs. actual progress
@@ -779,3 +803,58 @@ This enhancement transforms the tracker from activity-focused to comprehensive s
 
 **Repository Updated:** All changes pushed to GitHub with full documentation
 **Ready for Use:** Complete sales productivity and purchase planning system
+
+## UI/UX Improvements - September 16, 2025 🔄
+
+**🔧 USER FEEDBACK & ENHANCEMENT REQUESTS**
+
+### Issues Identified in Testing
+
+**Layout & Sizing Problems:**
+- ❌ **Purchase Goals Panel Scroll**: Page scrolls when window is fullscreen (should fit properly)
+- ❌ **Revenue Input Fields Too Small**: Need to accommodate xx,xxx,xxx (millions) for monthly revenue
+- ❌ **Tab Navigation Broken**: Tab works for first 3 fields but doesn't continue to revenue fields
+
+**Visual Design Issues:**
+- ❌ **Monthly Revenue Timeline Confusing**: Current breadcrumb segments don't make visual sense
+- ❌ **Missing Main View Integration**: Purchase goals only visible in separate panel
+
+### Enhanced Vision & Requirements
+
+**Milestone Icon System:**
+- ✅ **Individual Goal Icons**: Replace breadcrumb segments with unique icons for each purchase
+- ✅ **Timeline Positioning**: Icons positioned along revenue timeline based on required amount
+- ✅ **Visual Roadmap**: Create clear milestone markers showing progress path
+- ✅ **Main View Integration**: Display purchase goal icons directly on main monthly revenue bar
+
+**Improved Input System:**
+- ✅ **Fixed Tab Navigation**: Tab through all 5 fields (Activity → Calls → Backlog → Daily Rev → Monthly Rev)
+- ✅ **Larger Revenue Fields**: Wide enough for millions (xx,xxx,xxx format)
+- ✅ **Better Layout**: Purchase goals panel fits in fullscreen without scrolling
+
+**User Experience Goals:**
+- **Visual Roadmap**: Main monthly revenue bar shows purchase milestones as icons
+- **Clear Progress**: Each icon represents a purchase goal at the appropriate revenue position
+- **Intuitive Navigation**: Seamless tab flow through all input fields
+- **Professional Layout**: Clean, properly sized interface elements
+
+### Implementation Plan
+
+**Phase 1: Layout Fixes**
+- [ ] Fix purchase goals panel scrolling issue
+- [ ] Increase revenue input field widths for large numbers
+- [ ] Resolve tab navigation order for all 5 fields
+
+**Phase 2: Visual Milestone System**
+- [ ] Replace breadcrumb segments with individual milestone icons
+- [ ] Create unique icons for different purchase types
+- [ ] Position icons along timeline based on revenue requirements
+- [ ] Add milestone icons to main monthly revenue progress bar
+
+**Phase 3: Enhanced UX**
+- [ ] Integrate purchase roadmap into main interface
+- [ ] Add hover details for milestone icons
+- [ ] Ensure consistent behavior across web and Electron versions
+- [ ] Test complete improved system
+
+**Target Result:** Clean, professional interface with visual roadmap of purchase milestones integrated into the main monthly revenue tracking system.

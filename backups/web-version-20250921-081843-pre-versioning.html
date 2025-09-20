@@ -683,16 +683,8 @@
         </div>
     </div>
 
-    <!-- Version Info -->
-    <div style="padding: 0 2vw; margin-top: 10px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--text-secondary);">
-            <span>Sales Productivity Tracker v1.5.0</span>
-            <span onclick="showChangelog()" style="cursor: pointer; text-decoration: underline;" title="Click to see what's new">📝 What's New</span>
-        </div>
-    </div>
-
     <!-- Sales History Section -->
-    <div id="salesHistorySection" style="margin-top: 15px; padding: 0 2vw;">
+    <div id="salesHistorySection" style="margin-top: 20px; padding: 0 2vw;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
             <h3 style="margin: 0; color: var(--text-primary); font-size: 16px;">📊 Sales History</h3>
             <button onclick="addNewSalesEntry()" style="background: var(--success); color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;">+ Add Sale</button>
@@ -1203,55 +1195,6 @@
                 populateSalesHistory();
                 tracker.updateDisplay();
             }
-        }
-
-        // Version and Changelog Functions
-        function showChangelog() {
-            const changelog = `
-📱 Sales Productivity Tracker v1.5.0 - What's New
-
-🎯 MAJOR UPDATES:
-• Fixed monthly revenue to show cumulative totals (not separate tracking)
-• Added working days calculations (excludes weekends) 
-• Enhanced sales rate system with auto/manual toggle
-• Complete backup/restore system with human-readable JSON
-• Sales history section with editable entries and monthly totals
-
-🔧 BUG FIXES:
-• Fixed Enter key saving goals properly
-• Fixed immediate visual updates when adding goals
-• Changed default icon from laptop to target
-• Updated "Museum of Triumphs" → "Done", "Current Goals" → "Next"
-• Fixed backup property mappings for reliable export/import
-
-📊 SALES HISTORY:
-• Collapsible monthly sections with editable totals
-• Click any date or amount to edit directly
-• Sort by recency (newest first)
-• Delete individual entries
-• Add new sales entries easily
-
-⚡ CALCULATIONS:
-• "Days until" now shows "working days" (excluding weekends)
-• Date projections account for weekends
-• Time estimates: "5wd", "3wk", "2mo" format
-• Auto sales rate based on 30-day history
-• Manual sales rate override option
-
-💾 BACKUP SYSTEM:
-• Export all data to timestamped JSON files
-• Import from any backup to restore complete state
-• Includes sales history, goals, settings, commission rates
-• Chrome/Chromium browsers supported (File System Access API)
-
-🎨 UI IMPROVEMENTS:
-• Better dark mode support across all components
-• Purchase dates shown in "Done" section
-• Sales rate display with current rate indication
-• Cleaner layout and consistent styling
-            `;
-            
-            alert(changelog);
         }
 
         function populateSettingsPage() {
