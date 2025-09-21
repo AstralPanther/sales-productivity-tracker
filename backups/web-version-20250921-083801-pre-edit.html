@@ -176,9 +176,8 @@
         .menu-page {
             display: none;
             flex: 1;
-            overflow-y: hidden;
+            overflow-y: auto;
             overflow-x: hidden;
-            min-height: 0;
         }
 
         .menu-page.active {
@@ -291,21 +290,6 @@
 
         .activity-fill.complete {
             background: linear-gradient(90deg, #ffd700, #ffed4e);
-        }
-        
-        /* Multiplier display for overflowing progress bars */
-        .activity-fill[data-multiplier]::after {
-            content: attr(data-multiplier);
-            position: absolute;
-            right: 70px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 10px;
-            font-weight: bold;
-            color: rgba(0, 0, 0, 0.7);
-            background: rgba(255, 255, 255, 0.8);
-            padding: 1px 4px;
-            border-radius: 2px;
         }
 
         .expected-line {
@@ -528,31 +512,6 @@
             -webkit-appearance: none;
             margin: 0;
         }
-
-        /* Enhanced input focus states for better UX */
-        input[type="number"]:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
-            transition: all 0.2s ease;
-        }
-
-        /* Smooth transitions for interactive elements */
-        input[type="number"], button, .menu-tab {
-            transition: all 0.2s ease;
-        }
-
-        /* Enhanced button hover states */
-        button:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        }
-
-        /* Loading state for form submissions */
-        .form-loading {
-            opacity: 0.7;
-            pointer-events: none;
-        }
         input[id*="Revenue"][type=number] {
             -moz-appearance: textfield;
         }
@@ -727,7 +686,7 @@
     <!-- Version Info -->
     <div style="padding: 0 2vw; margin-top: 10px;">
         <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--text-secondary);">
-            <span>Sales Productivity Tracker v1.5.1</span>
+            <span>Sales Productivity Tracker v1.5.0</span>
             <span onclick="showChangelog()" style="cursor: pointer; text-decoration: underline;" title="Click to see what's new">📝 What's New</span>
         </div>
     </div>
@@ -735,7 +694,7 @@
     <!-- Sales History Section -->
     <div id="salesHistorySection" style="margin-top: 15px; padding: 0 2vw;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
-            <h3 style="margin: 0; color: var(--text-primary); font-size: 16px;">📊 History</h3>
+            <h3 style="margin: 0; color: var(--text-primary); font-size: 16px;">📊 Sales History</h3>
             <button onclick="addNewSalesEntry()" style="background: var(--success); color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;">+ Add Sale</button>
         </div>
         <div id="salesHistoryContent" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary);">
@@ -776,10 +735,7 @@
             document.getElementById(pageId + 'Page').classList.add('active');
             
             // Activate corresponding tab
-            const tabButton = document.querySelector(`[onclick="showMenuPage('${pageId}')"]`);
-            if (tabButton) {
-                tabButton.classList.add('active');
-            }
+            event.target.classList.add('active');
             
             // Populate content based on page
             if (pageId === 'update') {
@@ -799,23 +755,23 @@
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px;">
                             <div>
                                 <label style="display: block; margin-bottom: 3px; font-weight: 500; font-size: 13px;">Activity Points:</label>
-                                <input type="number" id="menuActivityInput" min="0" max="200" value="${tracker ? tracker.currentPoints : 0}" tabindex="1" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 14px;">
+                                <input type="number" id="menuActivityInput" min="0" max="200" value="${tracker ? tracker.currentPoints : 0}" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 14px;">
                             </div>
                             <div>
                                 <label style="display: block; margin-bottom: 3px; font-weight: 500; font-size: 13px;">Outbound Calls:</label>
-                                <input type="number" id="menuCallsInput" min="0" max="100" value="${tracker ? tracker.currentCalls : 0}" tabindex="2" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 14px;">
+                                <input type="number" id="menuCallsInput" min="0" max="100" value="${tracker ? tracker.currentCalls : 0}" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 14px;">
                             </div>
                             <div>
-                                <label style="display: block; margin-bottom: 3px; font-weight: 500; font-size: 13px;">Completed Tasks:</label>
-                                <input type="number" id="menuBacklogInput" min="0" max="1000" value="${tracker ? tracker.currentBacklog : 0}" tabindex="3" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 14px;">
+                                <label style="display: block; margin-bottom: 3px; font-weight: 500; font-size: 13px;">Today's Tasks:</label>
+                                <input type="number" id="menuBacklogInput" min="0" max="1000" value="${tracker ? (tracker.backlogTarget - tracker.currentBacklog) : 0}" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 14px;">
                             </div>
                             <div>
                                 <label style="display: block; margin-bottom: 3px; font-weight: 500; font-size: 13px;">Daily Revenue:</label>
-                                <input type="number" id="menuDailyRevenueInput" min="0" max="10000000" step="100" value="${tracker ? tracker.currentDailyRevenue : 0}" tabindex="4" placeholder="e.g., 5000" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 14px;">
+                                <input type="number" id="menuDailyRevenueInput" min="0" max="200000" step="100" value="${tracker ? tracker.currentDailyRevenue : 0}" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 14px;">
                             </div>
                             <div>
                                 <label style="display: block; margin-bottom: 3px; font-weight: 500; font-size: 13px;">Monthly Revenue:</label>
-                                <input type="number" id="menuMonthlyRevenueInput" min="0" max="100000000" step="1000" value="${tracker ? tracker.getMonthlyRevenueFromHistory() : 0}" tabindex="5" placeholder="e.g., 50000" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 14px;">
+                                <input type="number" id="menuMonthlyRevenueInput" min="0" max="2000000" step="1000" value="${tracker ? tracker.currentMonthlyRevenue : 0}" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 14px;">
                             </div>
                         </div>
                     </div>
@@ -885,26 +841,16 @@
             
             const points = parseInt(activityInput.value) || 0;
             const calls = parseInt(callsInput.value) || 0;
-            const completedTasks = parseInt(backlogInput.value) || 0;
+            const backlogRemaining = parseInt(backlogInput.value) || 0;
             const dailyRevenue = parseInt(dailyRevenueInput.value) || 0;
             const monthlyRevenue = parseInt(monthlyRevenueInput.value) || 0;
             
             // Update tracker data
             tracker.currentPoints = points;
             tracker.currentCalls = calls;
-            tracker.currentBacklog = completedTasks; // Now directly completed tasks
+            tracker.currentBacklog = tracker.backlogTarget - backlogRemaining; // Convert remaining to completed
             tracker.currentDailyRevenue = dailyRevenue;
-            
-            // Sync monthly revenue with sales history
-            const currentMonthRevenue = tracker.getMonthlyRevenueFromHistory();
-            if (monthlyRevenue !== currentMonthRevenue) {
-                tracker.updateCurrentMonthRevenue(monthlyRevenue);
-                populateSalesHistory(); // Refresh sales history display
-            }
-            
-            // Record daily progress
-            const today = new Date().toISOString().slice(0, 10);
-            tracker.addDailyProgressEntry(today, points, calls, completedTasks, dailyRevenue);
+            tracker.currentMonthlyRevenue = monthlyRevenue;
             
             // Save to localStorage
             tracker.saveData();
@@ -916,56 +862,32 @@
             // Close menu
             closeMenu();
             
-            // Enhanced success feedback with better animation
-            showSuccessIndicator('Progress updated! 📊', 'success');
+            // Show brief success indicator
+            showSuccessIndicator('Progress updated!');
         }
 
-        function showSuccessIndicator(message, type = 'success') {
+        function showSuccessIndicator(message) {
             const indicator = document.createElement('div');
             indicator.innerHTML = message;
-            
-            // Enhanced styling with animations and type-based colors
-            const colors = {
-                success: 'var(--success)',
-                info: 'var(--primary)',
-                warning: '#ffc107'
-            };
-            
             indicator.style.cssText = `
                 position: fixed;
                 top: 20px;
                 right: 20px;
-                background: ${colors[type] || colors.success};
+                background: var(--success);
                 color: white;
-                padding: 12px 16px;
-                border-radius: 6px;
-                font-size: 13px;
-                font-weight: 500;
+                padding: 8px 12px;
+                border-radius: 4px;
+                font-size: 12px;
                 z-index: 10000;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                opacity: 0;
-                transform: translateY(-20px);
-                transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-                border: 1px solid rgba(255, 255, 255, 0.2);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
             `;
             document.body.appendChild(indicator);
             
-            // Animate in
             setTimeout(() => {
-                indicator.style.opacity = '1';
-                indicator.style.transform = 'translateY(0)';
-            }, 50);
-            
-            // Animate out
-            setTimeout(() => {
-                indicator.style.opacity = '0';
-                indicator.style.transform = 'translateY(-20px)';
-                setTimeout(() => {
-                    if (indicator.parentNode) {
-                        indicator.parentNode.removeChild(indicator);
-                    }
-                }, 300);
-            }, 2500);
+                if (indicator.parentNode) {
+                    indicator.parentNode.removeChild(indicator);
+                }
+            }, 2000);
         }
 
         // Add global Esc key support for closing menu and Enter key for saving/closing
@@ -1040,9 +962,9 @@
                     </div>
                     
                     <!-- Goals List -->
-                    <div style="flex: 1; border: 1px solid var(--border-color); border-radius: 4px; margin-bottom: 10px; display: flex; flex-direction: column; min-height: 0; max-height: 400px; width: 100%; max-width: 800px;">
+                    <div style="flex: 1; border: 1px solid var(--border-color); border-radius: 4px; margin-bottom: 10px; display: flex; flex-direction: column; min-height: 0; width: 100%; max-width: 800px;">
                         <h3 style="margin: 0; padding: 8px 12px; background: var(--bg-accent); border-bottom: 1px solid #ddd; font-size: 14px; color: var(--text-primary);">Next</h3>
-                        <div id="purchaseGoalsList" style="flex: 1; padding: 6px; overflow-y: auto; min-height: 0;">
+                        <div id="purchaseGoalsList" style="flex: 1; padding: 6px; overflow-y: auto;">
                             <!-- Goals will be populated here -->
                         </div>
                     </div>
@@ -1064,7 +986,7 @@
                         <div style="display: flex; gap: 10px; align-items: center; font-size: 13px; flex-wrap: wrap;">
                             <button onclick="exportBackup()" style="background: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 12px;">💾 Export Backup</button>
                             <button onclick="importBackup()" style="background: var(--success); color: white; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 12px;">📂 Import Backup</button>
-                            <span style="color: var(--text-secondary); font-size: 11px; margin-left: 10px;">Works in all browsers</span>
+                            <span style="color: var(--text-secondary); font-size: 11px; margin-left: 10px;">Chrome required</span>
                         </div>
                     </div>
                 </div>
@@ -1122,40 +1044,17 @@
             }
         }
 
-        // History Functions (Sales + Daily Progress)
+        // Sales History Functions
         function populateSalesHistory() {
             const container = document.getElementById('salesHistoryContent');
             if (!container || !tracker) return;
 
-            // Combine sales history and daily progress
-            const allData = [];
+            const salesHistory = [...tracker.salesHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
             
-            // Get unique dates from both sources
-            const uniqueDates = new Set();
-            tracker.salesHistory.forEach(entry => uniqueDates.add(entry.date));
-            (tracker.dailyProgress || []).forEach(entry => uniqueDates.add(entry.date));
-            
-            // Create combined entries
-            Array.from(uniqueDates).forEach(date => {
-                const salesEntry = tracker.salesHistory.find(s => s.date === date);
-                const progressEntry = tracker.dailyProgress.find(p => p.date === date);
-                
-                allData.push({
-                    date: date,
-                    revenue: salesEntry ? salesEntry.amount : 0,
-                    activity: progressEntry ? progressEntry.activity : 0,
-                    calls: progressEntry ? progressEntry.calls : 0,
-                    tasks: progressEntry ? progressEntry.tasks : 0
-                });
-            });
-            
-            // Sort by date (newest first)
-            allData.sort((a, b) => new Date(b.date) - new Date(a.date));
-            
-            if (allData.length === 0) {
+            if (salesHistory.length === 0) {
                 container.innerHTML = `
                     <div style="text-align: center; padding: 20px; color: var(--text-secondary); font-size: 13px;">
-                        No data recorded yet. Your daily activity will appear here automatically.
+                        No sales recorded yet. Click "+ Add Sale" to get started.
                     </div>
                 `;
                 return;
@@ -1163,33 +1062,16 @@
 
             // Group by month
             const monthGroups = {};
-            allData.forEach(entry => {
+            salesHistory.forEach(entry => {
                 const month = entry.date.substring(0, 7); // YYYY-MM
                 if (!monthGroups[month]) {
                     monthGroups[month] = {
                         entries: [],
-                        totalRevenue: 0,
-                        totalActivity: 0,
-                        totalCalls: 0,
-                        totalTasks: 0
+                        total: 0
                     };
                 }
                 monthGroups[month].entries.push(entry);
-                monthGroups[month].totalRevenue += entry.revenue;
-            });
-
-            // Get monthly totals (independent of daily entries)
-            Object.keys(monthGroups).forEach(month => {
-                const group = monthGroups[month];
-                
-                // Use separate monthly totals, or calculate from daily entries as fallback
-                group.totalRevenue = tracker.getMonthlyTotal(month, 'revenue') || group.totalRevenue;
-                group.totalActivity = tracker.getMonthlyTotal(month, 'activity') || 
-                    group.entries.reduce((sum, e) => sum + e.activity, 0);
-                group.totalCalls = tracker.getMonthlyTotal(month, 'calls') || 
-                    group.entries.reduce((sum, e) => sum + e.calls, 0);
-                group.totalTasks = tracker.getMonthlyTotal(month, 'tasks') || 
-                    group.entries.reduce((sum, e) => sum + e.tasks, 0);
+                monthGroups[month].total += entry.amount;
             });
 
             let html = '';
@@ -1207,23 +1089,18 @@
                                 <span id="toggle-${month}" style="font-size: 12px; transition: transform 0.2s;">▼</span>
                                 <span style="font-weight: 500; color: var(--text-primary);">${monthName}</span>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
-                                <span style="color: var(--success); cursor: pointer;" onclick="editMonthlyTotal('${month}', 'revenue', this)" title="Click to edit monthly revenue">$${(group.totalRevenue/1000).toFixed(1)}K</span>
-                                <span style="color: var(--text-secondary); cursor: pointer;" onclick="editMonthlyTotal('${month}', 'activity', this)" title="Click to edit monthly activity">📊${group.totalActivity.toFixed(0)}</span>
-                                <span style="color: var(--text-secondary); cursor: pointer;" onclick="editMonthlyTotal('${month}', 'calls', this)" title="Click to edit monthly calls">📞${group.totalCalls.toFixed(0)}</span>
-                                <span style="color: var(--text-secondary); cursor: pointer;" onclick="editMonthlyTotal('${month}', 'tasks', this)" title="Click to edit monthly tasks">✅${group.totalTasks.toFixed(0)}</span>
-                                <span style="color: var(--text-muted);">(${group.entries.length})</span>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span onclick="editMonthTotal('${month}', this, event)" style="cursor: pointer; font-weight: 500; color: var(--success); padding: 2px 4px; border-radius: 2px;" title="Click to edit">$${(group.total/1000).toFixed(1)}K</span>
+                                <span style="font-size: 11px; color: var(--text-secondary);">(${group.entries.length} sales)</span>
                             </div>
                         </div>
                         <div id="month-${month}" style="display: block;">
                             ${group.entries.map(entry => `
-                                <div style="padding: 6px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-light); font-size: 11px;">
-                                    <span style="color: var(--text-primary); font-weight: 500;">${new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                <div style="padding: 6px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-light); font-size: 12px;">
+                                    <span onclick="editSalesDate('${entry.date}', this)" style="cursor: pointer; color: var(--text-primary); padding: 2px 4px; border-radius: 2px;" title="Click to edit">${new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span style="color: var(--success); min-width: 45px;">$${entry.revenue.toLocaleString()}</span>
-                                        <span style="color: var(--text-secondary); min-width: 30px;" title="Activity Points">📊${entry.activity}</span>
-                                        <span style="color: var(--text-secondary); min-width: 30px;" title="Calls">📞${entry.calls}</span>
-                                        <span style="color: var(--text-secondary); min-width: 30px;" title="Tasks">✅${entry.tasks}</span>
+                                        <span onclick="editSalesAmount('${entry.date}', this)" style="cursor: pointer; font-weight: 500; color: var(--text-primary); padding: 2px 4px; border-radius: 2px;" title="Click to edit">$${entry.amount.toLocaleString()}</span>
+                                        <button onclick="deleteSalesEntry('${entry.date}')" style="background: var(--danger); color: white; border: none; padding: 1px 4px; border-radius: 2px; cursor: pointer; font-size: 10px;">×</button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -1248,51 +1125,6 @@
                 toggle.style.transform = 'rotate(-90deg)';
                 toggle.textContent = '▶';
             }
-        }
-        
-        function editMonthlyTotal(month, field, element) {
-            const currentValue = tracker.getMonthlyTotal(month, field);
-            const displayValue = field === 'revenue' ? (currentValue / 1000).toFixed(1) : currentValue.toFixed(0);
-            
-            const input = document.createElement('input');
-            input.type = 'number';
-            input.value = displayValue;
-            input.style.cssText = `
-                background: var(--bg-primary);
-                color: var(--text-primary);
-                border: 1px solid var(--primary);
-                border-radius: 2px;
-                padding: 2px 4px;
-                font-size: 11px;
-                width: 50px;
-                text-align: center;
-            `;
-            
-            const originalContent = element.innerHTML;
-            element.innerHTML = '';
-            element.appendChild(input);
-            input.focus();
-            input.select();
-            
-            function saveValue() {
-                const newValue = parseFloat(input.value) || 0;
-                const actualValue = field === 'revenue' ? newValue * 1000 : newValue;
-                tracker.setMonthlyTotal(month, field, actualValue);
-                populateSalesHistory(); // Refresh the display
-            }
-            
-            function cancelEdit() {
-                element.innerHTML = originalContent;
-            }
-            
-            input.addEventListener('blur', saveValue);
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    saveValue();
-                } else if (e.key === 'Escape') {
-                    cancelEdit();
-                }
-            });
         }
 
         function addNewSalesEntry() {
@@ -1544,15 +1376,9 @@
             // Update tracker progress data
             tracker.currentPoints = points;
             tracker.currentCalls = calls;
-            tracker.currentBacklog = completedTasks; // Now directly completed tasks
+            tracker.currentBacklog = tracker.backlogTarget - backlogRemaining; // Convert remaining to completed
             tracker.currentDailyRevenue = dailyRevenue;
-            
-            // Sync monthly revenue with sales history
-            const currentMonthRevenue = tracker.getMonthlyRevenueFromHistory();
-            if (monthlyRevenue !== currentMonthRevenue) {
-                tracker.updateCurrentMonthRevenue(monthlyRevenue);
-                populateSalesHistory(); // Refresh sales history display
-            }
+            tracker.currentMonthlyRevenue = monthlyRevenue;
 
             // Save Settings Data
             const shiftStart = document.getElementById('settingsShiftStart').value;
@@ -1731,15 +1557,7 @@
                         goal.cost = parseFloat(updates.cost);
                         goal.requiredRevenue = Math.round(this.calculator.calculateRevenueForPurchase(goal.cost));
                     }
-                    if (updates.purchased !== undefined) {
-                        goal.purchased = updates.purchased;
-                        // Set purchase date when marking as purchased
-                        if (updates.purchased) {
-                            goal.purchaseDate = new Date().toISOString().slice(0, 10);
-                        } else {
-                            goal.purchaseDate = null;
-                        }
-                    }
+                    if (updates.purchased !== undefined) goal.purchased = updates.purchased;
                     this.save();
                 }
                 return goal;
@@ -1804,8 +1622,6 @@
                 this.shiftEnd = '17:00';
                 this.isEndTimeLocked = true;
                 this.salesHistory = []; // Array of {date: 'YYYY-MM-DD', amount: number, source: 'auto'|'manual'}
-                this.dailyProgress = []; // Array of {date: 'YYYY-MM-DD', activity: number, calls: number, tasks: number, revenue: number}
-                this.monthlyTotals = {}; // Object keyed by 'YYYY-MM' with {revenue: number, activity: number, calls: number, tasks: number}
                 this.salesRateMode = 'auto'; // 'auto' or 'manual'
                 this.manualSalesRate = 1000; // Manual daily sales rate
                 
@@ -1845,8 +1661,6 @@
                     
                     // Load sales history and rate settings
                     this.salesHistory = parsed.salesHistory || [];
-                    this.dailyProgress = parsed.dailyProgress || [];
-                    this.monthlyTotals = parsed.monthlyTotals || {};
                     this.salesRateMode = parsed.salesRateMode || 'auto';
                     this.manualSalesRate = parsed.manualSalesRate || 1000;
                 }
@@ -1869,8 +1683,6 @@
                     shiftStart: this.shiftStart,
                     shiftEnd: this.shiftEnd,
                     salesHistory: this.salesHistory,
-                    dailyProgress: this.dailyProgress,
-                    monthlyTotals: this.monthlyTotals,
                     salesRateMode: this.salesRateMode,
                     manualSalesRate: this.manualSalesRate
                 };
@@ -1985,17 +1797,7 @@
                 const activityProgress = this.currentPoints / this.target;
                 const activityFill = document.getElementById('activityFill');
                 if (activityFill) {
-                    // Cap progress bar at 100% to prevent overflow
-                    const cappedProgress = Math.min(activityProgress, 1.0);
-                    activityFill.style.width = Math.max(0.5, cappedProgress * 100) + '%';
-                    
-                    // Add multiplier if over 100%
-                    if (activityProgress > 1.0) {
-                        const multiplier = activityProgress.toFixed(1);
-                        activityFill.setAttribute('data-multiplier', `(${multiplier}x)`);
-                    } else {
-                        activityFill.removeAttribute('data-multiplier');
-                    }
+                    activityFill.style.width = Math.max(0.5, activityProgress * 100) + '%';
                     
                     // Color coding for activity
                     const expectedPoints = timeProgress * this.target;
@@ -2018,17 +1820,7 @@
                 const callsProgress = this.currentCalls / this.callsTarget;
                 const callsFill = document.getElementById('callsFill');
                 if (callsFill) {
-                    // Cap progress bar at 100% to prevent overflow
-                    const cappedProgress = Math.min(callsProgress, 1.0);
-                    callsFill.style.width = Math.max(0.5, cappedProgress * 100) + '%';
-                    
-                    // Add multiplier if over 100%
-                    if (callsProgress > 1.0) {
-                        const multiplier = callsProgress.toFixed(1);
-                        callsFill.setAttribute('data-multiplier', `(${multiplier}x)`);
-                    } else {
-                        callsFill.removeAttribute('data-multiplier');
-                    }
+                    callsFill.style.width = Math.max(0.5, callsProgress * 100) + '%';
                     
                     // Color coding for calls
                     const expectedCalls = timeProgress * this.callsTarget;
@@ -2054,17 +1846,7 @@
                     const backlogProgress = Math.max(0, this.currentBacklog / this.backlogTarget);
                     
                     if (backlogFill) {
-                        // Cap progress bar at 100% to prevent overflow
-                        const cappedProgress = Math.min(backlogProgress, 1.0);
-                        backlogFill.style.width = Math.max(0.5, cappedProgress * 100) + '%';
-                        
-                        // Add multiplier if over 100%
-                        if (backlogProgress > 1.0) {
-                            const multiplier = backlogProgress.toFixed(1);
-                            backlogFill.setAttribute('data-multiplier', `(${multiplier}x)`);
-                        } else {
-                            backlogFill.removeAttribute('data-multiplier');
-                        }
+                        backlogFill.style.width = Math.max(0.5, backlogProgress * 100) + '%';
                         
                         // Color coding for backlog based on expected progress
                         const expectedBacklogCompleted = timeProgress * this.backlogTarget;
@@ -2093,17 +1875,7 @@
                 const dailyRevenueProgress = this.currentDailyRevenue / this.dailyRevenueTarget;
                 const dailyRevenueFill = document.getElementById('dailyRevenueFill');
                 if (dailyRevenueFill) {
-                    // Cap progress bar at 100% to prevent overflow
-                    const cappedProgress = Math.min(dailyRevenueProgress, 1.0);
-                    dailyRevenueFill.style.width = Math.max(0.5, cappedProgress * 100) + '%';
-                    
-                    // Add multiplier if over 100%
-                    if (dailyRevenueProgress > 1.0) {
-                        const multiplier = dailyRevenueProgress.toFixed(1);
-                        dailyRevenueFill.setAttribute('data-multiplier', `(${multiplier}x)`);
-                    } else {
-                        dailyRevenueFill.removeAttribute('data-multiplier');
-                    }
+                    dailyRevenueFill.style.width = Math.max(0.5, dailyRevenueProgress * 100) + '%';
                     
                     // Color coding for daily revenue
                     const expectedDailyRevenue = timeProgress * this.dailyRevenueTarget;
@@ -2126,17 +1898,7 @@
                 const monthlyRevenueProgress = this.getMonthlyRevenueFromHistory() / this.monthlyRevenueTarget;
                 const monthlyRevenueFill = document.getElementById('monthlyRevenueFill');
                 if (monthlyRevenueFill) {
-                    // Cap progress bar at 100% to prevent overflow
-                    const cappedProgress = Math.min(monthlyRevenueProgress, 1.0);
-                    monthlyRevenueFill.style.width = Math.max(0.5, cappedProgress * 100) + '%';
-                    
-                    // Add multiplier if over 100%
-                    if (monthlyRevenueProgress > 1.0) {
-                        const multiplier = monthlyRevenueProgress.toFixed(1);
-                        monthlyRevenueFill.setAttribute('data-multiplier', `(${multiplier}x)`);
-                    } else {
-                        monthlyRevenueFill.removeAttribute('data-multiplier');
-                    }
+                    monthlyRevenueFill.style.width = Math.max(0.5, monthlyRevenueProgress * 100) + '%';
                     
                     // Color coding for monthly revenue based on month progress
                     const expectedMonthlyRevenue = monthProgress * this.monthlyRevenueTarget;
@@ -2260,7 +2022,26 @@
                     monthlyRevenueBar.appendChild(milestoneIcon);
                 });
                 
-                // Future goals indicator removed as requested
+                // Add future goals indicator if there are goals beyond this month
+                if (futureGoals.length > 0) {
+                    const futureIndicator = document.createElement('div');
+                    futureIndicator.className = 'future-goals-indicator';
+                    futureIndicator.innerHTML = `
+                        <div style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 2px 6px; font-size: 9px; color: var(--text-secondary); white-space: nowrap; z-index: 5;">
+                            +${futureGoals.length} next
+                        </div>
+                        <div style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); display: flex; align-items: center;">
+                            ${futureGoals.slice(0, 3).map(goal => `
+                                <span style="font-size: 12px; margin-left: -2px; opacity: 0.6; filter: grayscale(30%);" 
+                                      title="${goal.name} - $${goal.cost.toLocaleString()}">${getIconForGoal(goal.name, goal.iconType)}</span>
+                            `).join('')}
+                            ${futureGoals.length > 3 ? '<span style="font-size: 10px; color: #999;">...</span>' : ''}
+                        </div>
+                    `;
+                    futureIndicator.title = `Future goals: ${futureGoals.map(g => g.name).join(', ')}`;
+                    
+                    monthlyRevenueBar.appendChild(futureIndicator);
+                }
             }
 
             startUpdateLoop() {
@@ -2292,28 +2073,6 @@
                 const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
                 const monthlyEntries = this.salesHistory.filter(entry => entry.date.startsWith(currentMonth));
                 return monthlyEntries.reduce((sum, entry) => sum + entry.amount, 0);
-            }
-
-            updateCurrentMonthRevenue(newTotal) {
-                const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
-                const monthlyEntries = this.salesHistory.filter(entry => entry.date.startsWith(currentMonth));
-                const currentTotal = monthlyEntries.reduce((sum, entry) => sum + entry.amount, 0);
-                
-                if (monthlyEntries.length === 0) {
-                    // No entries for this month, create one
-                    const today = new Date().toISOString().slice(0, 10);
-                    this.addSalesEntry(today, newTotal, 'manual');
-                } else if (newTotal === 0) {
-                    // Remove all entries for this month
-                    this.salesHistory = this.salesHistory.filter(entry => !entry.date.startsWith(currentMonth));
-                } else {
-                    // Adjust existing entries proportionally
-                    const ratio = newTotal / currentTotal;
-                    monthlyEntries.forEach(entry => {
-                        entry.amount = Math.round(entry.amount * ratio);
-                    });
-                }
-                this.saveData();
             }
 
             getCurrentEarningRate(days = 30) {
@@ -2394,47 +2153,6 @@
                 if (this.currentDailyRevenue > 0) {
                     this.addSalesEntry(today, this.currentDailyRevenue, 'auto');
                 }
-            }
-
-            addDailyProgressEntry(date, activity, calls, tasks, revenue) {
-                // Remove existing entry for this date if it exists
-                this.dailyProgress = (this.dailyProgress || []).filter(entry => entry.date !== date);
-                
-                // Add new entry
-                this.dailyProgress.push({
-                    date: date,
-                    activity: activity || 0,
-                    calls: calls || 0,
-                    tasks: tasks || 0,
-                    revenue: revenue || 0,
-                    timestamp: new Date().toISOString()
-                });
-
-                // Sort by date (newest first)
-                this.dailyProgress.sort((a, b) => new Date(b.date) - new Date(a.date));
-                
-                this.saveData();
-            }
-            
-            setMonthlyTotal(month, field, value) {
-                // Month should be in format 'YYYY-MM'
-                if (!this.monthlyTotals[month]) {
-                    this.monthlyTotals[month] = {
-                        revenue: 0,
-                        activity: 0,
-                        calls: 0,
-                        tasks: 0
-                    };
-                }
-                this.monthlyTotals[month][field] = parseFloat(value) || 0;
-                this.saveData();
-            }
-            
-            getMonthlyTotal(month, field) {
-                if (!this.monthlyTotals[month]) {
-                    return 0;
-                }
-                return this.monthlyTotals[month][field] || 0;
             }
 
             getGoalsGroupedByMonth() {
@@ -2589,7 +2307,7 @@
             }
             
             container.innerHTML = goals.map((goal, index) => {
-                const currentRevenue = tracker.getMonthlyRevenueFromHistory();
+                const currentRevenue = tracker.currentMonthlyRevenue;
                 const goalProgress = tracker.purchaseGoalManager.calculateProgress(currentRevenue).find(g => g.id === goal.id);
                 const revenueRemaining = Math.max(0, goalProgress.endRevenue - currentRevenue);
                 
@@ -2753,7 +2471,7 @@
 
         function renderGoalItems(goals) {
             return goals.map((goal, index) => {
-                const currentRevenue = tracker.getMonthlyRevenueFromHistory();
+                const currentRevenue = tracker.currentMonthlyRevenue;
                 const goalProgress = tracker.purchaseGoalManager.calculateProgress(currentRevenue).find(g => g.id === goal.id);
                 const revenueRemaining = Math.max(0, goalProgress.endRevenue - currentRevenue);
                 
@@ -3029,7 +2747,7 @@
                 const pathContainer = document.getElementById('revenuePath');
                 const labelsContainer = document.getElementById('revenuePathLabels');
                 
-                const currentRevenue = tracker.getMonthlyRevenueFromHistory();
+                const currentRevenue = tracker.currentMonthlyRevenue;
                 const goals = tracker.purchaseGoalManager.calculateProgress(currentRevenue);
             
             if (goals.length === 0) {
@@ -3205,77 +2923,12 @@
             document.getElementById('startTimeInput').addEventListener('change', updateEndTime);
         });
 
-        // Backup System using File System Access API with fallback
-        function exportBackupFallback() {
-            try {
-                // Gather all data (same as main export function)
-                const backupData = {
-                    timestamp: new Date().toISOString(),
-                    version: "1.0",
-                    tracker: {
-                        currentValues: {
-                            activity: tracker.currentPoints,
-                            calls: tracker.currentCalls,
-                            backlog: tracker.currentBacklog
-                        },
-                        targets: {
-                            activityTarget: tracker.target,
-                            callsTarget: tracker.callsTarget,
-                            backlogTarget: tracker.backlogTarget
-                        },
-                        workTime: {
-                            start: tracker.shiftStart,
-                            end: tracker.shiftEnd
-                        },
-                        salesHistory: tracker.salesHistory,
-                        dailyProgress: tracker.dailyProgress,
-                        monthlyTotals: tracker.monthlyTotals,
-                        purchaseGoals: tracker.purchaseGoalManager.goals.map(goal => ({
-                            id: goal.id,
-                            name: goal.name,
-                            cost: goal.cost,
-                            iconType: goal.iconType,
-                            purchased: goal.purchased,
-                            purchaseDate: goal.purchaseDate,
-                            requiredRevenue: goal.requiredRevenue
-                        })),
-                        commissionSettings: {
-                            commissionRate: tracker.purchaseGoalManager.calculator.commissionRate,
-                            taxRate: tracker.purchaseGoalManager.calculator.taxRate
-                        },
-                        salesRateSettings: {
-                            salesRateMode: tracker.salesRateMode,
-                            manualSalesRate: tracker.manualSalesRate
-                        }
-                    }
-                };
-
-                // Create and trigger download
-                const dataStr = JSON.stringify(backupData, null, 2);
-                const blob = new Blob([dataStr], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `sales-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                
-                alert('Backup downloaded successfully!');
-            } catch (error) {
-                console.error('Error in backup fallback:', error);
-                alert('Error creating backup: ' + error.message);
-            }
-        }
-
+        // Backup System using File System Access API
         async function exportBackup() {
             try {
-                // Check if File System Access API is supported, with fallback
+                // Check if File System Access API is supported
                 if (!window.showSaveFilePicker) {
-                    // Fallback: Download as file
-                    exportBackupFallback();
+                    alert('File System Access API not supported. Use a Chromium-based browser.');
                     return;
                 }
 
@@ -3299,8 +2952,6 @@
                             end: tracker.shiftEnd
                         },
                         salesHistory: tracker.salesHistory,
-                        dailyProgress: tracker.dailyProgress,
-                        monthlyTotals: tracker.monthlyTotals,
                         purchaseGoals: tracker.purchaseGoalManager.goals.map(goal => ({
                             id: goal.id,
                             name: goal.name,
@@ -3346,118 +2997,11 @@
             }
         }
 
-        function restoreFromBackupData(backupData) {
-            // Validate backup data structure
-            if (!backupData.tracker) {
-                throw new Error('Invalid backup file format');
-            }
-            const data = backupData.tracker;
-            
-            // Restore tracker values
-            if (data.currentValues) {
-                tracker.currentPoints = data.currentValues.activity || 0;
-                tracker.currentCalls = data.currentValues.calls || 0;
-                tracker.currentBacklog = data.currentValues.backlog || 0;
-            }
-            if (data.targets) {
-                tracker.target = data.targets.activityTarget || 50;
-                tracker.callsTarget = data.targets.callsTarget || 20;
-                tracker.backlogTarget = data.targets.backlogTarget || 0;
-            }
-            if (data.workTime) {
-                tracker.shiftStart = data.workTime.start || '09:00';
-                tracker.shiftEnd = data.workTime.end || '17:00';
-            }
-            
-            // Restore sales history and daily progress
-            if (data.salesHistory) {
-                tracker.salesHistory = data.salesHistory;
-            }
-            if (data.dailyProgress) {
-                tracker.dailyProgress = data.dailyProgress;
-            }
-            if (data.monthlyTotals) {
-                tracker.monthlyTotals = data.monthlyTotals;
-            }
-            
-            // Restore commission settings
-            if (data.commissionSettings) {
-                tracker.purchaseGoalManager.calculator.commissionRate = data.commissionSettings.commissionRate || 0.0025;
-                tracker.purchaseGoalManager.calculator.taxRate = data.commissionSettings.taxRate || 0.325;
-            }
-            
-            // Restore sales rate settings
-            if (data.salesRateSettings) {
-                tracker.salesRateMode = data.salesRateSettings.salesRateMode || 'auto';
-                tracker.manualSalesRate = data.salesRateSettings.manualSalesRate || 1000;
-            }
-            
-            // Restore purchase goals
-            if (data.purchaseGoals) {
-                tracker.purchaseGoalManager.goals = data.purchaseGoals.map(goalData => {
-                    const goal = tracker.purchaseGoalManager.addGoal(goalData.name, goalData.cost);
-                    goal.id = goalData.id;
-                    goal.iconType = goalData.iconType || 'target';
-                    goal.purchased = goalData.purchased || false;
-                    goal.purchaseDate = goalData.purchaseDate;
-                    goal.requiredRevenue = goalData.requiredRevenue;
-                    return goal;
-                });
-                // Remove the extra goal that addGoal() creates
-                tracker.purchaseGoalManager.goals = tracker.purchaseGoalManager.goals.slice(0, data.purchaseGoals.length);
-            }
-            
-            // Save all restored data
-            tracker.save();
-            tracker.purchaseGoalManager.save();
-            
-            // Refresh the display
-            tracker.updateDisplay();
-            if (tracker.currentMenu === 'goals') {
-                populateGoalsPage();
-                populatePurchaseGoalsList();
-                updateRevenuePathVisualization();
-            }
-        }
-
-        function importBackupFallback() {
-            // Create a hidden file input element
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.json';
-            input.style.display = 'none';
-            
-            input.onchange = function(event) {
-                const file = event.target.files[0];
-                if (!file) return;
-                
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        const backupData = JSON.parse(e.target.result);
-                        restoreFromBackupData(backupData);
-                        alert(`Backup imported successfully! (from ${new Date(backupData.timestamp).toLocaleString()})`);
-                    } catch (error) {
-                        console.error('Error parsing backup file:', error);
-                        alert('Error parsing backup file: ' + error.message);
-                    }
-                };
-                reader.readAsText(file);
-                
-                // Clean up
-                document.body.removeChild(input);
-            };
-            
-            document.body.appendChild(input);
-            input.click();
-        }
-
         async function importBackup() {
             try {
                 // Check if File System Access API is supported
                 if (!window.showOpenFilePicker) {
-                    // Use fallback method
-                    importBackupFallback();
+                    alert('File System Access API not supported. Use a Chromium-based browser.');
                     return;
                 }
 
@@ -3472,7 +3016,74 @@
                 const text = await file.text();
                 const backupData = JSON.parse(text);
 
-                restoreFromBackupData(backupData);
+                // Validate backup data structure
+                if (!backupData.tracker) {
+                    throw new Error('Invalid backup file format');
+                }
+
+                const data = backupData.tracker;
+
+                // Restore tracker values
+                if (data.currentValues) {
+                    tracker.currentPoints = data.currentValues.activity || 0;
+                    tracker.currentCalls = data.currentValues.calls || 0;
+                    tracker.currentBacklog = data.currentValues.backlog || 0;
+                }
+
+                if (data.targets) {
+                    tracker.target = data.targets.activityTarget || 50;
+                    tracker.callsTarget = data.targets.callsTarget || 20;
+                    tracker.backlogTarget = data.targets.backlogTarget || 0;
+                }
+
+                if (data.workTime) {
+                    tracker.shiftStart = data.workTime.start || '09:00';
+                    tracker.shiftEnd = data.workTime.end || '17:00';
+                }
+
+                // Restore sales history
+                if (data.salesHistory) {
+                    tracker.salesHistory = data.salesHistory;
+                }
+
+                // Restore commission settings
+                if (data.commissionSettings) {
+                    tracker.purchaseGoalManager.calculator.commissionRate = data.commissionSettings.commissionRate || 0.0025;
+                    tracker.purchaseGoalManager.calculator.taxRate = data.commissionSettings.taxRate || 0.325;
+                }
+
+                // Restore sales rate settings
+                if (data.salesRateSettings) {
+                    tracker.salesRateMode = data.salesRateSettings.salesRateMode || 'auto';
+                    tracker.manualSalesRate = data.salesRateSettings.manualSalesRate || 1000;
+                }
+
+                // Restore purchase goals
+                if (data.purchaseGoals) {
+                    tracker.purchaseGoalManager.goals = data.purchaseGoals.map(goalData => {
+                        const goal = tracker.purchaseGoalManager.addGoal(goalData.name, goalData.cost);
+                        goal.id = goalData.id;
+                        goal.iconType = goalData.iconType || 'target';
+                        goal.purchased = goalData.purchased || false;
+                        goal.purchaseDate = goalData.purchaseDate;
+                        goal.requiredRevenue = goalData.requiredRevenue;
+                        return goal;
+                    });
+                    // Remove the extra goal that addGoal() creates
+                    tracker.purchaseGoalManager.goals = tracker.purchaseGoalManager.goals.slice(0, data.purchaseGoals.length);
+                }
+
+                // Save all restored data
+                tracker.save();
+                tracker.purchaseGoalManager.save();
+
+                // Refresh the display
+                tracker.updateDisplay();
+                if (tracker.currentMenu === 'goals') {
+                    populateGoalsPage();
+                    populatePurchaseGoalsList();
+                    updateRevenuePathVisualization();
+                }
 
                 alert(`Backup imported successfully! (from ${new Date(backupData.timestamp).toLocaleString()})`);
             } catch (error) {
