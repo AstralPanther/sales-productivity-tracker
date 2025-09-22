@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Permissions-Policy" content="browsing-topics=(), interest-cohort=(), attribution-reporting=()">
     <title>Activity Points Tracker</title>
     <style>
         /* CSS Custom Properties for Light/Dark Mode */
@@ -129,7 +130,8 @@
             border: 1px solid var(--border-color);
             width: 95%;
             max-width: 1200px;
-            max-height: 95vh;
+            height: 90vh;
+            max-height: 90vh;
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -167,23 +169,92 @@
 
         .menu-content {
             flex: 1;
-            overflow: hidden;
+            overflow-y: scroll;
             padding: 10px;
             display: flex;
             flex-direction: column;
+            min-height: 0;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) transparent;
+        }
+
+        .menu-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .menu-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .menu-content::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .menu-content::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* iOS-style Toggle Switch */
+        .sales-rate-toggle {
+            position: relative;
+            width: 140px;
+            height: 32px;
+            background: var(--border-color);
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 2px;
+        }
+
+        .sales-rate-toggle.active {
+            background: var(--success);
+            border-color: var(--success);
+        }
+
+        .sales-rate-toggle .toggle-option {
+            flex: 1;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: color 0.3s ease;
+            z-index: 2;
+            position: relative;
+            padding: 6px 0;
+        }
+
+        .sales-rate-toggle .toggle-option.active {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .sales-rate-toggle .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 68px;
+            height: 28px;
+            background: white;
+            border-radius: 14px;
+            transition: transform 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .sales-rate-toggle.manual .toggle-slider {
+            transform: translateX(68px);
         }
 
         .menu-page {
             display: none;
-            flex: 1;
-            overflow-y: hidden;
-            overflow-x: hidden;
-            min-height: 0;
         }
 
         .menu-page.active {
-            display: flex;
-            flex-direction: column;
+            display: block;
         }
 
         .menu-close {
@@ -693,7 +764,89 @@
                 <div id="goalsPage" class="menu-page">
                     <h3 style="margin: 0 0 20px 0; text-align: center; color: var(--text-primary);">Purchase Goals & Revenue Planning</h3>
                     <div id="goalsPageContent">
-                        <!-- Goals content will be moved here -->
+                        
+                        <!-- Commission Settings -->
+                        <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: 4px; width: 100%; max-width: 800px; margin-bottom: 15px;">
+                            <h3 style="margin: 0 0 8px 0; font-size: 15px; color: var(--text-primary);">Commission & Tax Settings</h3>
+                            <div style="display: flex; gap: 15px; align-items: center; font-size: 13px; flex-wrap: wrap; margin-bottom: 8px;">
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <label style="font-weight: 500;">Commission:</label>
+                                    <input type="number" id="commissionRate" min="0" max="10" step="0.01" value="0.25" style="width: 60px; padding: 4px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 13px;">
+                                    <span>%</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <label style="font-weight: 500;">Tax:</label>
+                                    <input type="number" id="taxRate" min="0" max="50" step="0.1" value="32.5" style="width: 60px; padding: 4px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 13px;">
+                                    <span>%</span>
+                                </div>
+                                <button onclick="updateCommissionSettings()" style="background: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 12px;">Update</button>
+                            </div>
+                        </div>
+
+                        <!-- Sales Rate Settings -->
+                        <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: 4px; width: 100%; max-width: 800px; margin-bottom: 15px;">
+                            <h3 style="margin: 0 0 8px 0; font-size: 15px; color: var(--text-primary);">💰 Sales Rate & Goal Estimates</h3>
+                            <div style="display: flex; gap: 15px; align-items: center; font-size: 13px; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label style="font-weight: 500;">Mode:</label>
+                                    <span id="autoRateDisplay" style="color: var(--text-secondary); font-size: 11px; min-width: 60px;">${tracker && tracker.salesRateMode === 'auto' ? '$' + tracker.getCurrentEarningRate().toFixed(0) + '/day' : ''}</span>
+                                    <div id="salesRateToggle" class="sales-rate-toggle ${tracker && tracker.salesRateMode === 'auto' ? 'active' : 'manual'}" onclick="toggleSalesRateMode()">
+                                        <div class="toggle-option ${tracker && tracker.salesRateMode === 'auto' ? 'active' : ''}">Auto</div>
+                                        <div class="toggle-option ${tracker && tracker.salesRateMode === 'manual' ? 'active' : ''}">Manual</div>
+                                        <div class="toggle-slider"></div>
+                                    </div>
+                                </div>
+                                <div id="manualRateSection" style="display: flex; align-items: center; gap: 5px;">
+                                    <label style="font-weight: 500;">Rate:</label>
+                                    <span>$</span>
+                                    <input type="number" id="manualSalesRate" min="0" step="100" value="${tracker && tracker.manualSalesRate ? tracker.manualSalesRate : 1000}" style="width: 80px; padding: 4px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 13px;" ${!tracker || tracker.salesRateMode === 'auto' ? 'disabled' : ''} onchange="updateManualSalesRate()">
+                                    <span>/day</span>
+                                </div>
+                                <span id="currentRateDisplay" style="color: var(--text-secondary); font-size: 12px;">(Current: $${tracker ? tracker.getCurrentEarningRate().toFixed(0) : '0'}/day)</span>
+                            </div>
+                            <div style="margin-top: 8px; font-size: 11px; color: var(--text-muted);">
+                                Auto mode calculates your daily rate from recent sales history. Manual mode lets you set a target rate for goal estimates.
+                            </div>
+                        </div>
+
+                        <!-- Done Goals Section -->
+                        <div style="border: 1px solid var(--border-color); border-radius: 4px; display: flex; flex-direction: column; min-height: 0; width: 100%; max-width: 800px; margin-bottom: 15px;">
+                            <h3 style="margin: 0; padding: 8px 12px; background: var(--success); border-bottom: 1px solid #ddd; font-size: 14px; color: white;">✅ Done</h3>
+                            <div id="purchaseGoalsListDone" style="padding: 6px; min-height: 0;">
+                                <!-- Completed goals will be populated here -->
+                            </div>
+                        </div>
+
+                        <!-- Monthly Progress Visualization -->
+                        <div style="background: var(--bg-tertiary); padding: 10px; border-radius: 4px; width: 100%; max-width: 800px; margin-bottom: 15px;">
+                            <h3 style="margin: 0 0 8px 0; font-size: 14px; color: var(--text-primary);">📈 Monthly Revenue Path</h3>
+                            <div id="revenuePath" style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 3px; height: 60px; position: relative; overflow: visible; margin-bottom: 20px;">
+                                <!-- Progress visualization will be here -->
+                            </div>
+                            <div id="revenuePathLabels" style="font-size: 11px; color: var(--text-secondary);">
+                                <!-- Labels will be here -->
+                            </div>
+                        </div>
+
+                        <!-- Next Goals Section -->
+                        <div style="border: 1px solid var(--border-color); border-radius: 4px; display: flex; flex-direction: column; min-height: 0; width: 100%; max-width: 800px;">
+                            <h3 style="margin: 0; padding: 8px 12px; background: var(--bg-accent); border-bottom: 1px solid #ddd; font-size: 14px; color: var(--text-primary);">🎯 Next</h3>
+                            <div id="purchaseGoalsListNext" style="padding: 6px; min-height: 0;">
+                                <!-- Pending goals will be populated here -->
+                            </div>
+                        </div>
+
+                        <!-- Add New Goal -->
+                        <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: 4px; width: 100%; max-width: 800px; margin-top: 15px;">
+                            <h3 style="margin: 0 0 8px 0; font-size: 15px; color: var(--text-primary);">Add New Goal</h3>
+                            <div style="display: flex; gap: 8px; align-items: center; font-size: 13px; flex-wrap: wrap;">
+                                <span id="newGoalIconDisplay" style="font-size: 16px; cursor: pointer;" onclick="showIconPicker()" title="Click to change icon">🎯</span>
+                                <input type="text" id="newGoalName" placeholder="Item name" style="width: 200px; min-width: 150px; padding: 4px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 13px;">
+                                <span>$</span>
+                                <input type="number" id="newGoalCost" placeholder="1200" min="1" step="1" style="width: 70px; padding: 4px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 13px;">
+                                <button onclick="addPurchaseGoal()" style="background: var(--success); color: white; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 12px;">Add</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -720,6 +873,8 @@
             <span onclick="selectIcon('book')" style="padding: 4px; cursor: pointer; border-radius: 3px; text-align: center; font-size: 20px;" title="Book">📚</span>
             <span onclick="selectIcon('shoes')" style="padding: 4px; cursor: pointer; border-radius: 3px; text-align: center; font-size: 20px;" title="Shoes">👟</span>
             <span onclick="selectIcon('keyboard')" style="padding: 4px; cursor: pointer; border-radius: 3px; text-align: center; font-size: 20px;" title="Keyboard">⌨️</span>
+            <span onclick="selectIcon('tattoo')" style="padding: 4px; cursor: pointer; border-radius: 3px; text-align: center; font-size: 20px;" title="Tattoo">🥀</span>
+            <span onclick="selectIcon('calligraphy')" style="padding: 4px; cursor: pointer; border-radius: 3px; text-align: center; font-size: 20px;" title="Calligraphy">🖋️</span>
             <span onclick="selectIcon('default')" style="padding: 4px; cursor: pointer; border-radius: 3px; text-align: center; font-size: 20px;" title="Other">🎯</span>
         </div>
     </div>
@@ -864,11 +1019,21 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div style="padding: 12px 0; text-align: center; border-top: 1px solid var(--border-light); margin-top: 12px;">
                         <button onclick="saveProgressAndSettings()" style="background: var(--success); color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; font-size: 14px; margin-right: 10px;">Save All</button>
                         <button onclick="resetData()" style="background: var(--danger); color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; font-size: 14px; margin-right: 10px;">Reset All Data</button>
                         <button onclick="closeMenu()" style="background: var(--button-secondary); color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; font-size: 14px;">Cancel</button>
+                    </div>
+
+                    <!-- Backup & Sync Section -->
+                    <div style="background: var(--bg-accent); padding: 12px; border-radius: 4px; margin-top: 15px;">
+                        <h3 style="margin: 0 0 10px 0; font-size: 16px; color: var(--text-primary);">💾 Backup & Sync</h3>
+                        <div style="display: flex; gap: 10px; align-items: center; font-size: 13px; flex-wrap: wrap;">
+                            <button onclick="exportBackup()" style="background: var(--primary); color: white; border: none; padding: 8px 12px; border-radius: 3px; cursor: pointer; font-size: 13px;">💾 Export Backup</button>
+                            <button onclick="importBackup()" style="background: var(--success); color: white; border: none; padding: 8px 12px; border-radius: 3px; cursor: pointer; font-size: 13px;">📂 Import Backup</button>
+                            <span style="color: var(--text-secondary); font-size: 12px; margin-left: 10px;">Works across all devices and browsers</span>
+                        </div>
                     </div>
                 </div>
             `;
@@ -997,7 +1162,29 @@
         });
 
         function populateGoalsPage() {
-            const content = document.getElementById('goalsPageContent');
+            // Populate the commission settings with current values
+            if (tracker && tracker.purchaseGoalManager) {
+                const commissionInput = document.getElementById('commissionRate');
+                const taxInput = document.getElementById('taxRate');
+                
+                if (commissionInput) {
+                    commissionInput.value = (tracker.purchaseGoalManager.calculator.commissionRate * 100).toFixed(2);
+                }
+                if (taxInput) {
+                    taxInput.value = (tracker.purchaseGoalManager.calculator.taxRate * 100).toFixed(1);
+                }
+
+                // Update sales rate display
+                updateSalesRateDisplay();
+
+                // Populate the goals list and revenue path
+                populatePurchaseGoalsList();
+                updateRevenuePathVisualization();
+            }
+        }
+        
+        function populateGoalsPageOLD() {
+            const content = document.getElementById('goalsPageContentOLD');
             content.innerHTML = `
                 <div style="display: flex; flex-direction: column; height: 100%; padding: 0 10px; align-items: center;">
                     <!-- Commission & Sales Rate Settings -->
@@ -1011,7 +1198,7 @@
                             </div>
                             <div style="display: flex; align-items: center; gap: 5px;">
                                 <label style="font-weight: 500;">Tax:</label>
-                                <input type="number" id="taxRate" min="0" max="50" step="0.1" value="${tracker ? (tracker.purchaseGoalManager.calculator.taxRate * 100).toFixed(1) : '32.5'}" style="width: 60px; padding: 4px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 13px;">
+                                <input type="number" id="taxRate" min="0" max="50" step="0.1" value="32.5" style="width: 60px; padding: 4px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 13px;">
                                 <span>%</span>
                             </div>
                             <button onclick="updateCommissionSettings()" style="background: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 12px;">Update</button>
@@ -1020,24 +1207,13 @@
                             <div style="display: flex; align-items: center; gap: 5px;">
                                 <label style="font-weight: 500;">Sales Rate:</label>
                                 <button id="salesRateToggle" onclick="toggleSalesRateMode()" style="background: ${tracker && tracker.salesRateMode === 'auto' ? 'var(--success)' : 'var(--warning)'}; color: white; border: none; padding: 2px 6px; border-radius: 2px; cursor: pointer; font-size: 11px; min-width: 50px;">${tracker ? (tracker.salesRateMode === 'auto' ? 'Auto' : 'Manual') : 'Auto'}</button>
-                                <input type="number" id="manualSalesRate" min="0" step="100" value="${tracker ? tracker.manualSalesRate : 1000}" style="width: 80px; padding: 4px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 13px; ${!tracker || tracker.salesRateMode === 'auto' ? 'opacity: 0.5;' : ''}" ${!tracker || tracker.salesRateMode === 'auto' ? 'disabled' : ''} onchange="updateManualSalesRate()">
+                                <input type="number" id="manualSalesRate" min="0" step="100" value="${tracker && tracker.manualSalesRate ? tracker.manualSalesRate : 1000}" style="width: 80px; padding: 4px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 13px; ${!tracker || tracker.salesRateMode === 'auto' ? 'opacity: 0.5;' : ''}" ${!tracker || tracker.salesRateMode === 'auto' ? 'disabled' : ''} onchange="updateManualSalesRate()">
                                 <span>/day</span>
                                 <span id="currentRateDisplay" style="margin-left: 10px; color: var(--text-secondary); font-size: 11px;">(Current: $${tracker ? tracker.getCurrentEarningRate().toFixed(0) : '0'}/day)</span>
                             </div>
                         </div>
                     </div>
                 
-                    <!-- Add New Goal -->
-                    <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: 4px; margin-bottom: 10px; width: 100%; max-width: 800px;">
-                        <h3 style="margin: 0 0 8px 0; font-size: 15px; color: var(--text-primary);">Add New Goal</h3>
-                        <div style="display: flex; gap: 8px; align-items: center; font-size: 13px; flex-wrap: wrap;">
-                            <span id="newGoalIconDisplay" style="font-size: 16px; cursor: pointer;" onclick="showIconPicker()">🎯</span>
-                            <input type="text" id="newGoalName" placeholder="Item name" style="width: 200px; min-width: 150px; padding: 4px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 13px;">
-                            <span>$</span>
-                            <input type="number" id="newGoalCost" placeholder="1200" min="1" step="1" style="width: 70px; padding: 4px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 13px;">
-                            <button onclick="addPurchaseGoal()" style="background: var(--success); color: white; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 12px;">Add</button>
-                        </div>
-                    </div>
                     
                     <!-- Goals List -->
                     <div style="flex: 1; border: 1px solid var(--border-color); border-radius: 4px; margin-bottom: 10px; display: flex; flex-direction: column; min-height: 0; max-height: 400px; width: 100%; max-width: 800px;">
@@ -1057,7 +1233,19 @@
                             <!-- Labels will be here -->
                         </div>
                     </div>
-                    
+
+                    <!-- Add New Goal -->
+                    <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: 4px; margin-top: 15px; width: 100%; max-width: 800px;">
+                        <h3 style="margin: 0 0 8px 0; font-size: 15px; color: var(--text-primary);">Add New Goal</h3>
+                        <div style="display: flex; gap: 8px; align-items: center; font-size: 13px; flex-wrap: wrap;">
+                            <span id="newGoalIconDisplay" style="font-size: 16px; cursor: pointer;" onclick="showIconPicker()" title="Click to change icon">🎯</span>
+                            <input type="text" id="newGoalName" placeholder="Item name" style="width: 200px; min-width: 150px; padding: 4px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 13px;">
+                            <span>$</span>
+                            <input type="number" id="newGoalCost" placeholder="1200" min="1" step="1" style="width: 70px; padding: 4px; border: 1px solid var(--border-color); border-radius: 3px; font-size: 13px;">
+                            <button onclick="addPurchaseGoal()" style="background: var(--success); color: white; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 12px;">Add</button>
+                        </div>
+                    </div>
+
                     <!-- Backup System -->
                     <div style="background: var(--bg-accent); padding: 10px; border-radius: 4px; margin-top: 10px; width: 100%; max-width: 500px;">
                         <h3 style="margin: 0 0 8px 0; font-size: 15px; color: var(--text-primary);">Backup & Sync</h3>
@@ -1080,26 +1268,37 @@
 
         function toggleSalesRateMode() {
             if (!tracker) return;
-            
+
             tracker.salesRateMode = tracker.salesRateMode === 'auto' ? 'manual' : 'auto';
             tracker.saveData();
-            
+
             // Update UI
             const toggle = document.getElementById('salesRateToggle');
             const input = document.getElementById('manualSalesRate');
-            
+            const autoRateDisplay = document.getElementById('autoRateDisplay');
+            const autoOption = toggle.querySelector('.toggle-option:first-child');
+            const manualOption = toggle.querySelector('.toggle-option:last-child');
+
             if (tracker.salesRateMode === 'auto') {
-                toggle.textContent = 'Auto';
-                toggle.style.background = 'var(--success)';
+                toggle.classList.add('active');
+                toggle.classList.remove('manual');
+                autoOption.classList.add('active');
+                manualOption.classList.remove('active');
                 input.disabled = true;
-                input.style.opacity = '0.5';
+                if (autoRateDisplay) {
+                    autoRateDisplay.textContent = `$${tracker.getCurrentEarningRate().toFixed(0)}/day`;
+                }
             } else {
-                toggle.textContent = 'Manual';
-                toggle.style.background = 'var(--warning)';
+                toggle.classList.remove('active');
+                toggle.classList.add('manual');
+                autoOption.classList.remove('active');
+                manualOption.classList.add('active');
                 input.disabled = false;
-                input.style.opacity = '1';
+                if (autoRateDisplay) {
+                    autoRateDisplay.textContent = '';
+                }
             }
-            
+
             updateSalesRateDisplay();
             populatePurchaseGoalsList(); // Refresh time estimates
         }
@@ -1117,8 +1316,14 @@
 
         function updateSalesRateDisplay() {
             const display = document.getElementById('currentRateDisplay');
+            const autoDisplay = document.getElementById('autoRateDisplay');
+
             if (display && tracker) {
                 display.textContent = `(Current: $${tracker.getCurrentEarningRate().toFixed(0)}/day)`;
+            }
+
+            if (autoDisplay && tracker && tracker.salesRateMode === 'auto') {
+                autoDisplay.textContent = `$${tracker.getCurrentEarningRate().toFixed(0)}/day`;
             }
         }
 
@@ -1208,10 +1413,10 @@
                                 <span style="font-weight: 500; color: var(--text-primary);">${monthName}</span>
                             </div>
                             <div style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
-                                <span style="color: var(--success); cursor: pointer;" onclick="editMonthlyTotal('${month}', 'revenue', this)" title="Click to edit monthly revenue">$${(group.totalRevenue/1000).toFixed(1)}K</span>
-                                <span style="color: var(--text-secondary); cursor: pointer;" onclick="editMonthlyTotal('${month}', 'activity', this)" title="Click to edit monthly activity">📊${group.totalActivity.toFixed(0)}</span>
-                                <span style="color: var(--text-secondary); cursor: pointer;" onclick="editMonthlyTotal('${month}', 'calls', this)" title="Click to edit monthly calls">📞${group.totalCalls.toFixed(0)}</span>
-                                <span style="color: var(--text-secondary); cursor: pointer;" onclick="editMonthlyTotal('${month}', 'tasks', this)" title="Click to edit monthly tasks">✅${group.totalTasks.toFixed(0)}</span>
+                                <span style="color: var(--success); cursor: pointer;" onclick="editMonthlyTotal('${month}', 'revenue', this)" title="Click to edit monthly revenue">$${group.totalRevenue.toLocaleString()}</span>
+                                <span style="color: var(--text-secondary); cursor: pointer;" onclick="editMonthlyTotal('${month}', 'activity', this)" title="Click to edit monthly activity average">📊${(group.totalActivity / group.entries.length || 0).toFixed(0)}</span>
+                                <span style="color: var(--text-secondary); cursor: pointer;" onclick="editMonthlyTotal('${month}', 'calls', this)" title="Click to edit monthly calls average">📞${(group.totalCalls / group.entries.length || 0).toFixed(0)}</span>
+                                <span style="color: var(--text-secondary); cursor: pointer;" onclick="editMonthlyTotal('${month}', 'tasks', this)" title="Click to edit monthly tasks average">✅${(group.totalTasks / group.entries.length || 0).toFixed(0)}</span>
                                 <span style="color: var(--text-muted);">(${group.entries.length})</span>
                             </div>
                         </div>
@@ -1220,10 +1425,10 @@
                                 <div style="padding: 6px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-light); font-size: 11px;">
                                     <span style="color: var(--text-primary); font-weight: 500;">${new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span style="color: var(--success); min-width: 45px;">$${entry.revenue.toLocaleString()}</span>
-                                        <span style="color: var(--text-secondary); min-width: 30px;" title="Activity Points">📊${entry.activity}</span>
-                                        <span style="color: var(--text-secondary); min-width: 30px;" title="Calls">📞${entry.calls}</span>
-                                        <span style="color: var(--text-secondary); min-width: 30px;" title="Tasks">✅${entry.tasks}</span>
+                                        <span style="color: var(--success); min-width: 45px; cursor: pointer;" onclick="editDayRevenue('${entry.date}', this)" title="Click to edit daily revenue">$${entry.revenue.toLocaleString()}</span>
+                                        <span style="color: var(--text-secondary); min-width: 30px; cursor: pointer;" onclick="editDayMetric('${entry.date}', 'activity', this)" title="Click to edit activity points">📊${entry.activity}</span>
+                                        <span style="color: var(--text-secondary); min-width: 30px; cursor: pointer;" onclick="editDayMetric('${entry.date}', 'calls', this)" title="Click to edit calls">📞${entry.calls}</span>
+                                        <span style="color: var(--text-secondary); min-width: 30px; cursor: pointer;" onclick="editDayMetric('${entry.date}', 'tasks', this)" title="Click to edit tasks">✅${entry.tasks}</span>
                                     </div>
                                 </div>
                             `).join('')}
@@ -1252,8 +1457,8 @@
         
         function editMonthlyTotal(month, field, element) {
             const currentValue = tracker.getMonthlyTotal(month, field);
-            const displayValue = field === 'revenue' ? (currentValue / 1000).toFixed(1) : currentValue.toFixed(0);
-            
+            const displayValue = field === 'revenue' ? currentValue.toFixed(0) : currentValue.toFixed(0);
+
             const input = document.createElement('input');
             input.type = 'number';
             input.value = displayValue;
@@ -1264,7 +1469,7 @@
                 border-radius: 2px;
                 padding: 2px 4px;
                 font-size: 11px;
-                width: 50px;
+                width: ${field === 'revenue' ? '80px' : '50px'};
                 text-align: center;
             `;
             
@@ -1276,9 +1481,15 @@
             
             function saveValue() {
                 const newValue = parseFloat(input.value) || 0;
-                const actualValue = field === 'revenue' ? newValue * 1000 : newValue;
+                const actualValue = newValue; // No conversion needed - working with full dollar amounts
                 tracker.setMonthlyTotal(month, field, actualValue);
                 populateSalesHistory(); // Refresh the display
+
+                // If editing current month's revenue, update main page tracker
+                const currentMonth = new Date().toISOString().slice(0, 7);
+                if (month === currentMonth && field === 'revenue') {
+                    tracker.updateDisplay();
+                }
             }
             
             function cancelEdit() {
@@ -1371,6 +1582,103 @@
                 populateSalesHistory();
                 tracker.updateDisplay();
             }
+        }
+
+        function editDayRevenue(date, element) {
+            const originalText = element.textContent;
+            const currentValue = parseInt(originalText.replace(/[$,]/g, '')) || 0;
+
+            element.innerHTML = `<input type="number" value="${currentValue}" min="0" step="100" style="width: 60px; padding: 2px; border: 1px solid var(--border-color); border-radius: 2px; font-size: 11px; color: var(--success);">`;
+            const input = element.querySelector('input');
+            input.focus();
+            input.select();
+
+            function saveEdit() {
+                const newValue = parseInt(input.value) || 0;
+
+                // Update the specific sales history entry (not monthly total)
+                const salesEntry = tracker.salesHistory.find(entry => entry.date === date);
+                if (salesEntry) {
+                    salesEntry.amount = newValue;
+                } else {
+                    // Create new entry if it doesn't exist
+                    tracker.addSalesEntry(date, newValue, 'manual');
+                }
+
+                tracker.saveData();
+                populateSalesHistory(); // Refresh the display
+                // Note: This intentionally does NOT call tracker.updateDisplay() to avoid affecting monthly total
+            }
+
+            function cancelEdit() {
+                element.textContent = originalText;
+            }
+
+            input.addEventListener('blur', saveEdit);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveEdit();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelEdit();
+                }
+            });
+        }
+
+        function editDayMetric(date, metric, element) {
+            const originalText = element.textContent;
+            const currentValue = parseInt(originalText.replace(/[^\d]/g, '')) || 0;
+
+            element.innerHTML = `<input type="number" value="${currentValue}" min="0" step="1" style="width: 40px; padding: 2px; border: 1px solid var(--border-color); border-radius: 2px; font-size: 11px; color: var(--text-secondary);">`;
+            const input = element.querySelector('input');
+            input.focus();
+            input.select();
+
+            function saveEdit() {
+                const newValue = parseInt(input.value) || 0;
+
+                // Update the specific daily progress entry
+                let progressEntry = tracker.dailyProgress.find(entry => entry.date === date);
+                if (!progressEntry) {
+                    // Create new entry if it doesn't exist
+                    progressEntry = {
+                        date: date,
+                        activity: 0,
+                        calls: 0,
+                        tasks: 0
+                    };
+                    tracker.dailyProgress.push(progressEntry);
+                }
+
+                // Update the specific metric
+                if (metric === 'activity') {
+                    progressEntry.activity = newValue;
+                } else if (metric === 'calls') {
+                    progressEntry.calls = newValue;
+                } else if (metric === 'tasks') {
+                    progressEntry.tasks = newValue;
+                }
+
+                tracker.saveData();
+                populateSalesHistory(); // Refresh the display
+                // Note: This intentionally does NOT call tracker.updateDisplay() to avoid affecting current day tracking
+            }
+
+            function cancelEdit() {
+                element.textContent = originalText;
+            }
+
+            input.addEventListener('blur', saveEdit);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveEdit();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelEdit();
+                }
+            });
         }
 
         // Version and Changelog Functions
@@ -1544,8 +1852,9 @@
             // Update tracker progress data
             tracker.currentPoints = points;
             tracker.currentCalls = calls;
-            tracker.currentBacklog = completedTasks; // Now directly completed tasks
+            tracker.currentBacklog = backlogRemaining; // Now directly remaining tasks
             tracker.currentDailyRevenue = dailyRevenue;
+            tracker.currentMonthlyRevenue = monthlyRevenue;
             
             // Sync monthly revenue with sales history
             const currentMonthRevenue = tracker.getMonthlyRevenueFromHistory();
@@ -1571,9 +1880,6 @@
             tracker.backlogTarget = backlogTarget;
             tracker.dailyRevenueTarget = dailyRevenueTarget;
             tracker.monthlyRevenueTarget = monthlyRevenueTarget;
-
-            // Auto-record today's revenue to sales history
-            tracker.autoRecordTodaysRevenue();
 
             // Save to localStorage
             tracker.saveData();
@@ -1609,6 +1915,8 @@
             'book': '📚',
             'shoes': '👟',
             'keyboard': '⌨️',
+            'tattoo': '🥀',
+            'calligraphy': '🖋️',
             'default': '🎯'
         };
 
@@ -2168,8 +2476,8 @@
                 if (activityDisplay) activityDisplay.textContent = `${this.currentPoints}/${this.target}`;
                 if (callsDisplay) callsDisplay.textContent = `${this.currentCalls}/${this.callsTarget}`;
                 if (backlogDisplay) backlogDisplay.textContent = `${this.currentBacklog}/${this.backlogTarget}`;
-                if (dailyRevenueDisplay) dailyRevenueDisplay.textContent = `$${(this.currentDailyRevenue/1000).toFixed(1)}K`;
-                if (monthlyRevenueDisplay) monthlyRevenueDisplay.textContent = `$${(this.getMonthlyRevenueFromHistory()/1000).toFixed(1)}K`;
+                if (dailyRevenueDisplay) dailyRevenueDisplay.textContent = `$${this.currentDailyRevenue.toLocaleString()}`;
+                if (monthlyRevenueDisplay) monthlyRevenueDisplay.textContent = `$${this.getMonthlyRevenueFromHistory().toLocaleString()}`;
             }
 
             updateTimeMarkers() {
@@ -2290,51 +2598,68 @@
 
             getMonthlyRevenueFromHistory() {
                 const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+                // Use independent monthly total if available, otherwise fall back to summing daily entries
+                const monthlyTotal = this.getMonthlyTotal(currentMonth, 'revenue');
+                if (monthlyTotal > 0) {
+                    return monthlyTotal;
+                }
+                // Fallback: sum daily entries (for backward compatibility)
                 const monthlyEntries = this.salesHistory.filter(entry => entry.date.startsWith(currentMonth));
                 return monthlyEntries.reduce((sum, entry) => sum + entry.amount, 0);
             }
 
             updateCurrentMonthRevenue(newTotal) {
                 const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
-                const monthlyEntries = this.salesHistory.filter(entry => entry.date.startsWith(currentMonth));
-                const currentTotal = monthlyEntries.reduce((sum, entry) => sum + entry.amount, 0);
-                
-                if (monthlyEntries.length === 0) {
-                    // No entries for this month, create one
-                    const today = new Date().toISOString().slice(0, 10);
-                    this.addSalesEntry(today, newTotal, 'manual');
-                } else if (newTotal === 0) {
-                    // Remove all entries for this month
-                    this.salesHistory = this.salesHistory.filter(entry => !entry.date.startsWith(currentMonth));
-                } else {
-                    // Adjust existing entries proportionally
-                    const ratio = newTotal / currentTotal;
-                    monthlyEntries.forEach(entry => {
-                        entry.amount = Math.round(entry.amount * ratio);
-                    });
-                }
+                // Set independent monthly total (does not affect daily entries)
+                this.setMonthlyTotal(currentMonth, 'revenue', newTotal);
                 this.saveData();
             }
 
-            getCurrentEarningRate(days = 30) {
+            getCurrentEarningRate(days = 7) {
                 if (this.salesRateMode === 'manual') {
                     return this.manualSalesRate;
                 }
-                
-                if (this.salesHistory.length === 0) return 0;
-                
+
+                // Try to get last 7 days first
                 const cutoffDate = new Date();
                 cutoffDate.setDate(cutoffDate.getDate() - days);
                 const cutoffDateStr = cutoffDate.toISOString().slice(0, 10);
-                
+
                 const recentEntries = this.salesHistory.filter(entry => entry.date >= cutoffDateStr);
-                
-                if (recentEntries.length === 0) return 0;
-                
-                const totalRevenue = recentEntries.reduce((sum, entry) => sum + entry.amount, 0);
-                const daysCovered = Math.max(1, recentEntries.length); // Prevent division by zero
-                
-                return totalRevenue / daysCovered;
+
+                // If we have at least 3 days of recent data, use rolling average
+                if (recentEntries.length >= 3) {
+                    const totalRevenue = recentEntries.reduce((sum, entry) => sum + entry.amount, 0);
+                    return totalRevenue / recentEntries.length;
+                }
+
+                // Fallback 1: Use independent monthly total if available
+                const currentMonth = new Date().toISOString().slice(0, 7);
+                const monthlyTotal = this.getMonthlyTotal(currentMonth, 'revenue');
+                if (monthlyTotal > 0) {
+                    const currentDate = new Date();
+                    const dayOfMonth = currentDate.getDate();
+                    return monthlyTotal / dayOfMonth;
+                }
+
+                // Fallback 2: Use current month's daily entries
+                const monthlyEntries = this.salesHistory.filter(entry => entry.date.startsWith(currentMonth));
+                if (monthlyEntries.length > 0) {
+                    const monthlyRevenue = monthlyEntries.reduce((sum, entry) => sum + entry.amount, 0);
+                    const currentDate = new Date();
+                    const dayOfMonth = currentDate.getDate();
+                    return monthlyRevenue / dayOfMonth;
+                }
+
+                // Fallback 3: Use any available sales history
+                if (this.salesHistory.length > 0) {
+                    const totalRevenue = this.salesHistory.reduce((sum, entry) => sum + entry.amount, 0);
+                    const daysCovered = this.salesHistory.length;
+                    return totalRevenue / daysCovered;
+                }
+
+                // Last resort: Use a reasonable default
+                return 1000; // $1000/day as a starting assumption
             }
 
             calculateWorkingDaysUntilDate(targetDate) {
@@ -2374,17 +2699,31 @@
 
             calculateTimeToGoal(goalAmount) {
                 const currentRate = this.getCurrentEarningRate();
-                if (currentRate <= 0) return Infinity;
-                
-                const remainingAmount = goalAmount - this.getMonthlyRevenueFromHistory();
-                if (remainingAmount <= 0) return 0;
-                
+
+                if (currentRate <= 0) {
+                    return Infinity;
+                }
+
+                const currentRevenue = this.getMonthlyRevenueFromHistory();
+                const remainingAmount = goalAmount - currentRevenue;
+
+                if (remainingAmount <= 0) {
+                    return {
+                        workingDays: 0,
+                        calendarDays: 0,
+                        completionDate: new Date()
+                    };
+                }
+
                 const workingDaysNeeded = Math.ceil(remainingAmount / currentRate);
-                const completionDate = this.addWorkingDaysToDate(new Date(), workingDaysNeeded);
-                
+
+                // Simplified completion date calculation
+                const completionDate = new Date();
+                completionDate.setDate(completionDate.getDate() + workingDaysNeeded);
+
                 return {
                     workingDays: workingDaysNeeded,
-                    calendarDays: Math.ceil((completionDate - new Date()) / (1000 * 60 * 60 * 24)),
+                    calendarDays: workingDaysNeeded,
                     completionDate: completionDate
                 };
             }
@@ -2570,23 +2909,110 @@
         }
 
         function populatePurchaseGoalsList() {
-            const container = document.getElementById('purchaseGoalsList');
+            const nextContainer = document.getElementById('purchaseGoalsListNext');
+            const doneContainer = document.getElementById('purchaseGoalsListDone');
             const goals = tracker.purchaseGoalManager.getGoalsSorted();
             
-            if (goals.length === 0) {
-                container.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px;">No purchase goals yet. Add one above!</div>';
-                return;
+            // Separate goals into pending and completed
+            const pendingGoals = goals.filter(goal => !goal.purchased);
+            const completedGoals = goals.filter(goal => goal.purchased);
+
+            // Populate Next section
+            if (pendingGoals.length === 0) {
+                nextContainer.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px;">No pending goals. Add one above!</div>';
+            } else {
+                nextContainer.innerHTML = pendingGoals.map(goal => renderGoalItem(goal, false)).join('');
             }
 
-            // Check if we should use grouped display
-            const purchasedGoals = goals.filter(goal => goal.purchased);
-            const unpurchasedGoals = goals.filter(goal => !goal.purchased);
-            
-            if (unpurchasedGoals.length > 3 || purchasedGoals.length > 0) {
-                // Use new grouped layout
-                renderGroupedGoalsList(container, goals);
-                return;
+            // Populate Done section
+            if (completedGoals.length === 0) {
+                doneContainer.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px;">No completed goals yet.</div>';
+            } else {
+                doneContainer.innerHTML = completedGoals.map(goal => renderGoalItem(goal, true)).join('');
             }
+
+            // Setup drag and drop for pending goals only
+            if (pendingGoals.length > 0) {
+                setupGoalDragAndDrop(nextContainer);
+            }
+        }
+
+        function renderGoalItem(goal, isCompleted) {
+            const currentRevenue = tracker.getMonthlyRevenueFromHistory();
+            const goalProgress = tracker.purchaseGoalManager.calculateProgress(currentRevenue).find(g => g.id === goal.id);
+            const revenueRemaining = Math.max(0, goalProgress.endRevenue - currentRevenue);
+
+            return `
+            <div class="goal-item" draggable="${!isCompleted}" data-goal-id="${goal.id}"
+                 style="display: flex; align-items: center; padding: 6px; border: 1px solid var(--border-color); margin-bottom: 4px; background: ${isCompleted ? 'var(--bg-accent)' : 'var(--bg-primary)'}; border-radius: 3px; cursor: ${!isCompleted ? 'move' : 'default'}; color: var(--text-primary);">
+
+                ${!isCompleted ? '<div class="drag-handle" style="margin-right: 6px; color: var(--text-muted); cursor: grab;">⋮⋮</div>' : ''}
+
+                <input type="checkbox" ${goal.purchased ? 'checked' : ''} onchange="toggleGoalPurchased('${goal.id}')"
+                       style="margin-right: 8px; transform: scale(1.2);">
+
+                <div style="flex: 1; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span onclick="showIconPicker('edit', '${goal.id}', event)" style="margin-right: 6px; font-size: 16px; cursor: pointer; padding: 2px; border-radius: 3px;" title="Click to change icon">${getIconForGoal(goal.name, goal.iconType)}</span>
+                        <span style="font-weight: 500; ${goal.purchased ? 'text-decoration: line-through; opacity: 0.7;' : ''}">${goal.name}</span>
+                        <span style="color: var(--text-secondary); font-size: 11px;">$${goal.cost.toLocaleString()}</span>
+                        ${!isCompleted ? (() => {
+                            const currentRevenue = tracker.getMonthlyRevenueFromHistory();
+                            const goalProgress = tracker.purchaseGoalManager.calculateProgress(currentRevenue).find(g => g.id === goal.id);
+                            const timeToGoal = tracker.calculateTimeToGoal(goalProgress.endRevenue);
+                            let timeEstimate = 'N/A';
+
+                            // Calculate percentage progress
+                            const progressPercent = goalProgress.endRevenue > 0 ? Math.min(100, Math.max(0, (currentRevenue / goalProgress.endRevenue) * 100)) : 0;
+                            const progressColor = progressPercent >= 100 ? 'var(--success)' : progressPercent >= 75 ? 'var(--warning)' : 'var(--primary)';
+
+
+                            if (timeToGoal === Infinity) {
+                                timeEstimate = 'No sales data';
+                            } else if (timeToGoal && typeof timeToGoal === 'object' && timeToGoal.hasOwnProperty('workingDays')) {
+                                const days = timeToGoal.workingDays;
+                                if (days <= 0) {
+                                    timeEstimate = 'Complete!';
+                                } else if (days <= 7) {
+                                    timeEstimate = `${days} work days`;
+                                } else if (days <= 30) {
+                                    timeEstimate = `${Math.ceil(days/5)} weeks`;
+                                } else {
+                                    timeEstimate = `${Math.ceil(days/22)} months`;
+                                }
+                            } else {
+                                timeEstimate = 'Calculating...';
+                            }
+
+                            return `
+                                <div style="display: flex; flex-direction: column; gap: 2px;">
+                                    <span style="color: var(--text-muted); font-size: 10px;">💰 $${(revenueRemaining/1000).toFixed(1)}K left • ⏱️ ${timeEstimate}</span>
+                                    <div style="display: flex; align-items: center; gap: 4px;">
+                                        <div style="flex: 1; height: 4px; background: #e0e0e0; border-radius: 2px; overflow: hidden; position: relative;">
+                                            <div style="height: 100%; background: ${progressPercent >= 100 ? '#28a745' : progressPercent >= 75 ? '#ffc107' : '#007bff'}; width: ${progressPercent}%; position: absolute; top: 0; left: 0;" title="Progress: ${progressPercent.toFixed(1)}% (${currentRevenue}/${goalProgress.endRevenue})"></div>
+                                        </div>
+                                        <span style="font-size: 9px; color: ${progressPercent >= 100 ? '#28a745' : progressPercent >= 75 ? '#ffc107' : '#007bff'}; font-weight: 500; min-width: 28px;">${progressPercent.toFixed(0)}%</span>
+                                    </div>
+                                </div>
+                            `;
+                        })() : ''}
+                    </div>
+                    <button onclick="removeGoal('${goal.id}')" style="background: var(--danger); color: white; border: none; padding: 2px 6px; border-radius: 2px; cursor: pointer; font-size: 10px; margin-left: 8px;">×</button>
+                </div>
+            </div>
+            `;
+        }
+
+        function setupGoalDragAndDrop(container) {
+            // Call the main setupDragAndDrop function
+            setupDragAndDrop();
+        }
+
+        // Legacy function - redirect to new structure
+        function renderGroupedGoalsList(container, goals) {
+            // This function is no longer needed with the new structure
+            populatePurchaseGoalsList();
+            return; // Skip all the old code below
             
             container.innerHTML = goals.map((goal, index) => {
                 const currentRevenue = tracker.getMonthlyRevenueFromHistory();
@@ -2691,7 +3117,7 @@
                     html += `
                         <div style="display: flex; align-items: center; padding: 6px; margin-bottom: 4px; background: var(--bg-accent); border-radius: 3px; color: var(--text-primary);">
                             <div style="flex: 1; font-weight: 500;">
-                                <span style="margin-right: 6px; font-size: 16px;">${getIconForGoal(goal.name, goal.iconType)}</span>
+                                <span onclick="showIconPicker('edit', '${goal.id}', event)" style="margin-right: 6px; font-size: 16px; cursor: pointer; padding: 2px; border-radius: 3px;" title="Click to change icon">${getIconForGoal(goal.name, goal.iconType)}</span>
                                 <span style="text-decoration: line-through; color: var(--text-secondary);">✅ ${goal.name}</span>
                                 <span style="margin-left: 8px; font-size: 10px; color: var(--text-muted);">📅 ${formattedDate}</span>
                             </div>
@@ -2757,7 +3183,7 @@
                 const goalProgress = tracker.purchaseGoalManager.calculateProgress(currentRevenue).find(g => g.id === goal.id);
                 const revenueRemaining = Math.max(0, goalProgress.endRevenue - currentRevenue);
                 
-                const daysToGoal = tracker.calculateTimeToGoal(goal.requiredRevenue);
+                const daysToGoal = tracker.calculateTimeToGoal(goalProgress.endRevenue);
                 const achievementDate = new Date();
                 achievementDate.setDate(achievementDate.getDate() + daysToGoal);
                 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -2785,12 +3211,26 @@
                     
                     <div onclick="editGoalCost('${goal.id}', this)" style="font-size: 11px; color: var(--text-secondary); margin-right: 8px; cursor: pointer; padding: 2px; border-radius: 3px;" title="Click to edit cost">$${goal.cost}</div>
                     
-                    <div style="text-align: right; margin-right: 8px;">
-                        <div style="font-size: 9px; color: var(--text-secondary); line-height: 1.2;">
+                    <div style="text-align: right; margin-right: 8px; min-width: 120px;">
+                        <div style="font-size: 9px; color: var(--text-secondary); line-height: 1.2; margin-bottom: 2px;">
                             💰 $${(revenueRemaining/1000).toFixed(1)}K left • ⏱️ ${timeEstimate}
                         </div>
+                        <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
+                            ${(() => {
+                                const progressPercent = goalProgress.endRevenue > 0 ? Math.min(100, Math.max(0, (currentRevenue / goalProgress.endRevenue) * 100)) : 0;
+                                const progressColor = progressPercent >= 100 ? 'var(--success)' : progressPercent >= 75 ? 'var(--warning)' : 'var(--primary)';
+
+
+                                return `
+                                    <div style="flex: 1; height: 3px; background: #e0e0e0; border-radius: 2px; overflow: hidden; min-width: 40px; position: relative;">
+                                        <div style="height: 100%; background: ${progressPercent >= 100 ? '#28a745' : progressPercent >= 75 ? '#ffc107' : '#007bff'}; width: ${progressPercent}%; position: absolute; top: 0; left: 0;" title="Progress: ${progressPercent.toFixed(1)}% (${currentRevenue}/${goalProgress.endRevenue})"></div>
+                                    </div>
+                                    <span style="font-size: 8px; color: ${progressPercent >= 100 ? '#28a745' : progressPercent >= 75 ? '#ffc107' : '#007bff'}; font-weight: 500; min-width: 22px;">${progressPercent.toFixed(0)}%</span>
+                                `;
+                            })()}
+                        </div>
                         <div style="font-size: 8px; color: var(--text-muted);">
-                            📅 ${workingDays === Infinity ? 'Date unknown' : `${formattedDate} (in ${workingDays} work days)`}
+                            📅 ${daysToGoal === Infinity ? 'Date unknown' : `${formattedDate} (in ${daysToGoal} work days)`}
                         </div>
                     </div>
                     
@@ -2853,27 +3293,42 @@
             if (draggedElement !== this) {
                 const draggedId = draggedElement.dataset.goalId;
                 const targetId = this.dataset.goalId;
-                
-                const allItems = Array.from(document.querySelectorAll('.goal-item'));
-                const draggedIndex = allItems.findIndex(item => item.dataset.goalId === draggedId);
-                const targetIndex = allItems.findIndex(item => item.dataset.goalId === targetId);
-                
+
+                // Only work with draggable items in the Next section
+                const nextContainer = document.getElementById('purchaseGoalsListNext');
+                const draggableItems = Array.from(nextContainer.querySelectorAll('.goal-item[draggable="true"]'));
+
+                const draggedIndex = draggableItems.findIndex(item => item.dataset.goalId === draggedId);
+                const targetIndex = draggableItems.findIndex(item => item.dataset.goalId === targetId);
+
                 if (draggedIndex !== -1 && targetIndex !== -1) {
                     let newIndex = targetIndex;
-                    
+
                     // Adjust for drop position
                     if (this.dropPosition === 'below') {
                         newIndex = targetIndex + 1;
                     }
-                    
+
                     // Adjust for array shift when moving down
                     if (draggedIndex < newIndex) {
                         newIndex = newIndex - 1;
                     }
-                    
-                    tracker.purchaseGoalManager.moveGoal(draggedIndex, newIndex);
-                    populatePurchaseGoalsList();
-                    updateRevenuePathVisualization();
+
+                    // Find the actual goal indexes in the full goals array
+                    const allGoals = tracker.purchaseGoalManager.getGoalsSorted();
+                    const pendingGoals = allGoals.filter(goal => !goal.purchased);
+
+                    const draggedGoal = pendingGoals[draggedIndex];
+                    const targetGoal = pendingGoals[newIndex];
+
+                    if (draggedGoal && targetGoal) {
+                        const fullDraggedIndex = allGoals.findIndex(g => g.id === draggedGoal.id);
+                        const fullTargetIndex = allGoals.findIndex(g => g.id === targetGoal.id);
+
+                        tracker.purchaseGoalManager.moveGoal(fullDraggedIndex, fullTargetIndex);
+                        populatePurchaseGoalsList();
+                        updateRevenuePathVisualization();
+                    }
                 }
             }
         }
@@ -3117,10 +3572,6 @@
                     </div>
                 `).join('')}
                 
-                <!-- Current position indicator -->
-                <div style="position: absolute; left: ${progressPercent}%; top: 15px; transform: translateX(-50%); z-index: 15;">
-                    <div style="width: 3px; height: 30px; background: red; border-radius: 2px; box-shadow: 0 0 5px rgba(255,0,0,0.5);" title="Current Revenue: $${currentRevenue.toLocaleString()}"></div>
-                </div>
                 
                 <!-- Month progress indicator -->
                 ${(() => {
@@ -3133,6 +3584,7 @@
                     return `
                     <div style="position: absolute; left: ${monthProgressPercent}%; top: 0px; transform: translateX(-50%); z-index: 16;">
                         <div style="width: 2px; height: 60px; background: var(--primary); border-radius: 1px; box-shadow: 0 0 3px rgba(0,122,204,0.5);" title="Month Progress: Day ${currentDay} of ${daysInMonth}"></div>
+                        <div style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 10px; background: white; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.2);" title="Today: Day ${currentDay} of ${daysInMonth}">📅</div>
                     </div>
                     `;
                 })()}
@@ -3202,7 +3654,10 @@
 
         // Update end time when start time changes (if locked)
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('startTimeInput').addEventListener('change', updateEndTime);
+            const startTimeInput = document.getElementById('startTimeInput');
+            if (startTimeInput) {
+                startTimeInput.addEventListener('change', updateEndTime);
+            }
         });
 
         // Backup System using File System Access API with fallback
